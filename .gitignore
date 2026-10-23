@@ -1,0 +1,21 @@
+# Dependencies and build artifacts
+node_modules/
+dist/
+build/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
