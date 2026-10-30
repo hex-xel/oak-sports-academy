@@ -19,3 +19,14 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local AI tooling state
+.icm/
+graphify-out/cache/
+
+# Obsidian per-user state and generated graph notes
+docs/.obsidian/
+docs/graph/
+
+# Personal tooling reference 
+/TOOLING.md
