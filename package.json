@@ -1,0 +1,16 @@
+{
+  "name": "oak-sports-academy",
+  "version": "0.0.1",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "echo 'Use: npm run dev -w apps/api  OR  npm run dev -w apps/mobile'",
+    "test": "npm run test -w apps/api"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

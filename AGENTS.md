@@ -4,6 +4,25 @@
 
 Describe the project here.
 
+## Execution Boundary
+
+The project owner performs all installs, environment setups, and test runs personally.
+Agents do not run them; they explain how, in detail.
+
+1. Do not run installers, package managers, dependency installs, setup or bootstrap
+   scripts, or test suites.
+2. Do not change machine-level configuration: PATH, global tool or agent config, or
+   anything outside this repository.
+3. Instead, give complete step-by-step instructions: the working directory, the exact
+   command, what success looks like, and what to do when a step fails.
+4. Stop and wait for the owner to run the steps and report the output before continuing.
+5. Reading, searching, and editing project files is still expected. When validation is
+   needed, supply the commands for the owner to run; that is how rule 9 of the workflow
+   below is satisfied.
+
+This applies to every environment and every tool in this repository, including
+graphify, ICM, Obsidian, and spec-kit.
+
 ## AI Agent Workflow
 
 Any AI coding agent working on this project must:
@@ -18,6 +37,45 @@ Any AI coding agent working on this project must:
 8. Never modify specifications without user approval.
 9. Validate changes after implementation.
 10. Report what changed and whether validation passed.
+
+## Code Comments and Documentation
+
+Write for the next reader: a teammate, or you in three months. English, matching the
+existing project documentation.
+
+**Comments**
+
+1. Explain **why**, not **what**. If a comment is needed to say what the code does,
+   rename or restructure the code first.
+2. Give every exported function, type, hook, and API route a TSDoc/JSDoc block: purpose,
+   parameters, return value, thrown errors, and side effects.
+3. Comment non-obvious decisions and constraints: business rules (slot capacity,
+   guardian consent for minors, payment states), date and timezone handling,
+   third-party quirks, and workarounds.
+4. Cite the source of a workaround — issue link, ADR, or exact error — instead of
+   paraphrasing it.
+5. Use `TODO(name): reason` for deferred work. A bare `TODO` is not acceptable.
+6. No commented-out code and no stale comments. Delete dead code; git keeps the history.
+   Update or remove a comment in the same change that invalidates it.
+7. Never put secrets, credentials, or real participant or parent data in a comment.
+
+**Documentation**
+
+1. Long-form documentation lives in `docs/` (the Obsidian vault): decisions in
+   `docs/decisions/ADR-0001-*.md`, architecture in `docs/architecture/`, milestone
+   material in `docs/milestone-1/`.
+2. Start every new note with frontmatter — `status`, `owner`, `milestone` — and link it
+   from `docs/index.md` so Dataview queries keep working.
+3. Keep one source of truth: requirements in `specifications.md` and the spec-kit
+   artifacts, setup instructions in `README.md`, design rationale in the vault. Link
+   between them instead of duplicating.
+4. Update affected documentation in the same change as the code. A change that
+   invalidates a document is incomplete until that document is fixed.
+5. When adding a public API or module, document its purpose and usage in
+   `docs/architecture/` and keep `README.md` accurate.
+6. Do not commit generated or private material to the vault: `docs/graph/` and
+   `docs/.obsidian/` are ignored, and meeting transcripts or client data do not belong
+   in the repository.
 
 ## Specifications
 

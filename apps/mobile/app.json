@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Oak Sports Academy",
+    "slug": "oak-sports-academy",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "oaksports",
+    "platforms": ["android"],
+    "android": {
+      "package": "com.oaksports.academy",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+    "extra": {
+      /* EXPO_PUBLIC_API_URL is set in .env at runtime.
+         Use your machine's LAN IP, not localhost, for physical device testing.
+         Example: http://192.168.1.10:3000/api/v1 */
+      "apiUrl": "$EXPO_PUBLIC_API_URL"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ]
+  }
+}

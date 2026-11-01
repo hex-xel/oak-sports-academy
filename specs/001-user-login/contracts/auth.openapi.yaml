@@ -1,0 +1,228 @@
+openapi: 3.1.0
+info:
+  title: Oak Sports Academy — Authentication API (mobile login slice)
+  version: 0.1.0
+  description: |
+    Login, session lookup, and logout for the native Android customer app.
+
+    **Transport**: the session token is returned in the login response body and sent as
+    `Authorization: Bearer <token>`. No cookie is issued by this version. A browser client
+    (staff/admin web, next feature) will add a cookie transport without changing these
+    service semantics.
+
+    Registration, email verification, and password recovery are separate features.
+servers:
+  - url: /api/v1
+paths:
+  /auth/login:
+    post:
+      summary: Sign in with email and password
+      operationId: login
+      tags: [Auth]
+      parameters:
+        - name: X-Client-Platform
+          in: header
+          required: true
+          description: Must be `mobile`. Guards against handing a bearer token to an unknown client.
+          schema:
+            type: string
+            const: mobile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Signed in.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Malformed body, invalid fields, or missing/incorrect client header.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unsupportedClient:
+                  value: { code: UNSUPPORTED_CLIENT, message: "This client is not supported." }
+        '401':
+          description: Wrong password **or** unknown email — identical response for both.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: |
+            Credentials were correct but the account cannot sign in. Returned only after
+            password verification, so it does not disclose account existence.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Seconds until the next attempt is accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Unexpected server error; no internal detail is returned.
+
+  /auth/session:
+    get:
+      summary: Return the signed-in user for the current token
+      operationId: getSession
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current session details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '401':
+          description: Missing, expired, revoked, or unknown token — all identical.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      summary: Revoke the current session
+      operationId: logout
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Session revoked. Idempotent — also returned when no valid session was supplied.
+        '401':
+          description: Missing or malformed authorization header.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+
+  schemas:
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+          example: customer@example.com
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+          writeOnly: true
+
+    LoginResponse:
+      type: object
+      required: [user, landingPath, sessionToken, expiresAt]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserSummary'
+        landingPath:
+          type: string
+          const: /
+          description: App route for the customer home screen.
+        sessionToken:
+          type: string
+          description: |
+            Opaque session token. Stored only in Expo SecureStore; sent as a Bearer token.
+            Never logged, never placed in a URL.
+        expiresAt:
+          type: string
+          format: date-time
+
+    SessionResponse:
+      type: object
+      required: [user, landingPath]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserSummary'
+        landingPath:
+          type: string
+          const: /
+        expiresAt:
+          type: string
+          format: date-time
+
+    UserSummary:
+      type: object
+      required: [id, email, role, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: [string, 'null']
+        role:
+          type: string
+          enum: [CUSTOMER, STAFF, ADMIN]
+        status:
+          type: string
+          enum: [ACTIVE, PENDING_APPROVAL, SUSPENDED]
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - UNSUPPORTED_CLIENT
+            - INVALID_CREDENTIALS
+            - EMAIL_NOT_VERIFIED
+            - ACCOUNT_SUSPENDED
+            - RATE_LIMITED
+            - UNAUTHENTICATED
+            - INTERNAL_ERROR
+        message:
+          type: string
+          description: Safe for display; never contains internal details.
+        details:
+          type: object
+          description: Field-level validation messages only; omitted otherwise.
+```
+
+## Contract rules
+
+1. **No account enumeration.** `401 INVALID_CREDENTIALS` is returned for both an unknown
+   email and a wrong password, with identical wording and comparable timing.
+2. **Verification after authentication.** `403 EMAIL_NOT_VERIFIED` only follows a correct
+   password for that account.
+3. **No token echo beyond login.** `sessionToken` appears only in the login response; it is
+   never returned by `/auth/session`, never logged, never in a URL.
+4. **All rejection paths identical.** Expired, revoked, and fabricated tokens all produce
+   `401 UNAUTHENTICATED`.
+5. **Idempotent logout.** A second logout with the same token returns `204`.
+6. **Client header.** Login without `X-Client-Platform: mobile` returns
+   `400 UNSUPPORTED_CLIENT` — a deliberate guard until the cookie-based web client exists.
