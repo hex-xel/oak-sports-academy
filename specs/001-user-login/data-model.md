@@ -27,14 +27,13 @@ model User {
   passwordHash    String
   displayName     String?
   role            Role          @default(CUSTOMER)
-  status          AccountStatus @default(ACTIVE)
+  status          AccountStatus @default(PENDING_APPROVAL)
   emailVerifiedAt DateTime?
   lastSignInAt    DateTime?
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
   sessions        Session[]
-  signInAttempts  SignInAttempt[]
 
   @@index([role])
   @@map("users")
@@ -42,11 +41,11 @@ model User {
 
 model Session {
   id         String    @id @default(uuid()) @db.Uuid
-  tokenHash  String    @unique
+  tokenHash  String    @unique @db.Char(64)
   userId     String    @db.Uuid
   expiresAt  DateTime
   revokedAt  DateTime?
-  ipAddress  String?
+  ipAddress  String?   @db.VarChar(45)
   userAgent  String?   @db.VarChar(255)
   createdAt  DateTime  @default(now())
 
@@ -60,7 +59,7 @@ model Session {
 model SignInAttempt {
   id         String   @id @default(uuid()) @db.Uuid
   email      String
-  ipAddress  String
+  ipAddress  String   @db.VarChar(45)
   succeeded  Boolean
   createdAt  DateTime @default(now())
 
@@ -68,7 +67,48 @@ model SignInAttempt {
   @@index([ipAddress, createdAt])
   @@map("sign_in_attempts")
 }
+
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  timestamp    DateTime @default(now()) @db.Timestamptz(3)
+  userId       String   @db.Uuid
+  action       String
+  targetEntity String
+  targetId     String
+  payloadHash  String   @db.Char(64)
+  previousHash String   @unique @db.Char(64)
+  currentHash  String   @unique @db.Char(64)
+
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
 ```
+
+## AuditLog and database isolation (approved 2026-11-02)
+
+Add an `AuditLog` model mapped to `audit_logs` with UUID id, UTC timestamp, actor userId
+(UUID), action, targetEntity, targetId, and 64-character lowercase SHA-256 payloadHash,
+previousHash, and currentHash. Keep actor/target identifiers as historical values; do
+not cascade-delete audit entries. previousHash and currentHash are unique. The genesis
+previousHash is 64 zeros. Chain traversal follows hashes rather than timestamp sorting.
+Canonical UTF-8 encoding, UTC millisecond timestamp representation, and deterministic
+redacted payload serialization are shared by append and verification, using the exact
+§4 concatenation order. IDs are not added to that mandated hash formula.
+
+Every append takes the same transaction advisory lock before reading the head. An
+administrative mutation and its entry commit together. Runtime audit access is only
+INSERT/SELECT, with append access narrowed to the approved writer; no UPDATE, DELETE,
+or TRUNCATE. Privileged maintenance remains a separately controlled trust boundary.
+A hash chain alone cannot detect tail truncation without a trusted external checkpoint.
+
+Use RLS on sensitive auth tables and scoped transaction-local verified identity under
+a non-owner, non-BYPASSRLS runtime role. Own-account policies constrain user/session
+access; sign-in attempts are accessible only through the narrow auth/audit paths.
+Pre-auth credential lookup and session bootstrap use narrowly granted database functions,
+fixed search_path, minimal return values, and no arbitrary SQL interface. No runtime
+request uses migration credentials. See research.md R13 for the trust boundary.
+Policies/functions/grants require SQL migrations alongside the Prisma models.
 
 ## Entity notes
 
@@ -76,7 +116,11 @@ model SignInAttempt {
 index is the authority for "this email is taken". `passwordHash` holds the Argon2id
 encoded string (algorithm, parameters, salt, hash) and is never selected by any endpoint
 that returns data. `emailVerifiedAt` is null until the verification feature sets it.
-`status` gates sign-in: `ACTIVE` and `PENDING_APPROVAL` may sign in; `SUSPENDED` may not.
+`status` gates sign-in: only verified `ACTIVE` accounts may sign in. Accounts awaiting
+approval remain `PENDING_APPROVAL`; academy approval changes status to `ACTIVE`.
+`PENDING_APPROVAL` and `SUSPENDED` cannot sign in. Defaults never grant approval.
+The unmatched User.signInAttempts relation is removed; attempts remain standalone so
+unknown-email attempts are recorded without a mandatory user relationship.
 
 **Session** — one row per signed-in instance. `tokenHash` is the SHA-256 of the random
 token; the raw token is returned once to the app at sign-in and stored in Expo SecureStore.
@@ -95,7 +139,7 @@ development.
 | --- | --- |
 | `email` | Trim, lowercase, at least 3 chars, at most 254, single `@` with a dot in the domain. Rejected with a validation error before any lookup. |
 | password | 1–128 characters, never trimmed, never logged. Minimum length and complexity are enforced by registration, not by login. |
-| request body | JSON object only, strict schema — unknown keys are rejected (Zod `.strict()`). |
+| request body | JSON object only; validate required fields and strip unknown keys with Zod before use. |
 | `tokenHash` | 64 lowercase hex characters (SHA-256). |
 | `ipAddress` | 45 characters maximum (IPv6). Truncate rather than reject. |
 
@@ -122,9 +166,10 @@ This feature only reads account status; it never changes it.
 
 ## Migration notes
 
-- Create the enums and tables in one migration (`001_init_auth`).
+- Create reviewed Prisma/SQL migrations for the enums, auth/audit tables, RLS policies,
+  narrow bootstrap functions, and grants; apply to a development database first.
 - Seed script inserts one verified active customer, one unverified customer, and one
-  suspended customer, all with a known development password from `.env.seed`; the seed
+  suspended customer, and one verified pending-approval customer, all with a development password from `.env.seed`; the seed
   refuses to run when `NODE_ENV=production`. Staff and admin accounts are added with the
   web client feature.
 - No destructive migration is required by this feature.

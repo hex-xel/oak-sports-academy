@@ -1,0 +1,260 @@
+{
+  "apps/api/package.json": {
+    "mtime": 1793527241.235034,
+    "seen": 1793608603.2859287,
+    "ast_hash": "cd84c8fb73ef4db4d69c9191ec48a3ae",
+    "semantic_hash": ""
+  },
+  "apps/api/tsconfig.json": {
+    "mtime": 1793525597.94575,
+    "seen": 1793608603.2859356,
+    "ast_hash": "f9141d9c3b837205b793412f38180109",
+    "semantic_hash": ""
+  },
+  "apps/mobile/.expo/devices.json": {
+    "mtime": 1793527670.1400704,
+    "seen": 1793608603.2859387,
+    "ast_hash": "e5f6eb13c875f326cfd5915d3364614f",
+    "semantic_hash": ""
+  },
+  "apps/mobile/app.json": {
+    "mtime": 1793599478.4996526,
+    "seen": 1793608603.2859404,
+    "ast_hash": "e89dfcbefe7506e7652acbe28040f544",
+    "semantic_hash": ""
+  },
+  "apps/mobile/app/_layout.tsx": {
+    "mtime": 1793597682.4652264,
+    "seen": 1793608603.2859423,
+    "ast_hash": "190a662ab0352d815af34bf9d20cd522",
+    "semantic_hash": ""
+  },
+  "apps/mobile/app/index.tsx": {
+    "mtime": 1793602710.9802527,
+    "seen": 1793608603.2859437,
+    "ast_hash": "936da4aa20efd03f973e719e6a96b55e",
+    "semantic_hash": ""
+  },
+  "apps/mobile/app/login.tsx": {
+    "mtime": 1793602704.9989893,
+    "seen": 1793608603.2859452,
+    "ast_hash": "32241f14553339823081a01f68d1ec7c",
+    "semantic_hash": ""
+  },
+  "apps/mobile/components/PrimaryButton.tsx": {
+    "mtime": 1793597621.4982371,
+    "seen": 1793608603.2859466,
+    "ast_hash": "5903f6c7adad42c665e71c2775952b2e",
+    "semantic_hash": ""
+  },
+  "apps/mobile/components/TextField.tsx": {
+    "mtime": 1793597723.1529205,
+    "seen": 1793608603.2859476,
+    "ast_hash": "f7a1e08f17f7e7d38048c65df3d722e1",
+    "semantic_hash": ""
+  },
+  "apps/mobile/constants/theme.ts": {
+    "mtime": 1793597591.4666634,
+    "seen": 1793608603.285949,
+    "ast_hash": "94da483bd0dbd9a928820574ccbdac44",
+    "semantic_hash": ""
+  },
+  "apps/mobile/features/auth/LoginForm.tsx": {
+    "mtime": 1793604138.080148,
+    "seen": 1793608603.2859504,
+    "ast_hash": "a898b420fc5c39038cfff0d5a24eeda8",
+    "semantic_hash": ""
+  },
+  "apps/mobile/package.json": {
+    "mtime": 1793601147.1239688,
+    "seen": 1793608603.285952,
+    "ast_hash": "f4e3cd5176b772af39c73dac038f3955",
+    "semantic_hash": ""
+  },
+  "apps/mobile/tsconfig.json": {
+    "mtime": 1793597714.9651737,
+    "seen": 1793608603.285953,
+    "ast_hash": "ac90a643df3c0b5435f75b74628493c9",
+    "semantic_hash": ""
+  },
+  "package.json": {
+    "mtime": 1793525581.1373415,
+    "seen": 1793608603.2859542,
+    "ast_hash": "b866d1169c96e887ec27cd09515415a7",
+    "semantic_hash": ""
+  },
+  "packages/shared/package.json": {
+    "mtime": 1793525618.9976594,
+    "seen": 1793608603.2859557,
+    "ast_hash": "03738840d8bbb25b53b6aa0b7fa11e92",
+    "semantic_hash": ""
+  },
+  "packages/shared/src/index.ts": {
+    "mtime": 1793525624.5308812,
+    "seen": 1793608603.2859569,
+    "ast_hash": "4b6f68ef8c571b0e2758496b98be4734",
+    "semantic_hash": ""
+  },
+  "tsconfig.base.json": {
+    "mtime": 1793525587.2504287,
+    "seen": 1793608603.285958,
+    "ast_hash": "d0d21d081216492284bc8490eaa52c07",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1793611828.6798303,
+    "seen": 1793611833.449312,
+    "ast_hash": "cc055aa488d3b3c8ea3fad357398dd45",
+    "semantic_hash": ""
+  },
+  "apps/mobile/.expo/README.md": {
+    "mtime": 1793527670.1208522,
+    "seen": 1793608603.2859604,
+    "ast_hash": "5b7704d0d342e4ae362671b70b5d86bc",
+    "semantic_hash": ""
+  },
+  "docs/architecture/algorithms-and-security.md": {
+    "mtime": 1793529462.071623,
+    "seen": 1793608603.2859616,
+    "ast_hash": "d68951676d5fb4047a5a461240764931",
+    "semantic_hash": ""
+  },
+  "docs/index.md": {
+    "mtime": 1793611828.6789105,
+    "seen": 1793611833.4493248,
+    "ast_hash": "c72e1e5bd95d98b4422ad4f15b4ed79c",
+    "semantic_hash": ""
+  },
+  "specifications.md": {
+    "mtime": 1793529448.9424045,
+    "seen": 1793608603.2859645,
+    "ast_hash": "6b57213fce3e343d077efc8dd6c89ab8",
+    "semantic_hash": ""
+  },
+  "specs/001-user-login/checklists/requirements.md": {
+    "mtime": 1793441034.4558184,
+    "seen": 1793608603.2859664,
+    "ast_hash": "2b6295d748c870392db143bb01ece664",
+    "semantic_hash": ""
+  },
+  "specs/001-user-login/data-model.md": {
+    "mtime": 1793610206.6055248,
+    "seen": 1793610565.100143,
+    "ast_hash": "5afd592721d120c33fe3253b68bf73c5",
+    "semantic_hash": ""
+  },
+  "specs/001-user-login/plan.md": {
+    "mtime": 1793610206.5974345,
+    "seen": 1793610565.1001453,
+    "ast_hash": "871a30a82fb5efe21681437dc72a80ec",
+    "semantic_hash": ""
+  },
+  "specs/001-user-login/quickstart.md": {
+    "mtime": 1793441667.2228887,
+    "seen": 1793608603.2859704,
+    "ast_hash": "635a4eebcedd34e3d651471638e4b0b3",
+    "semantic_hash": ""
+  },
+  "specs/001-user-login/research.md": {
+    "mtime": 1793610174.3105943,
+    "seen": 1793610565.100152,
+    "ast_hash": "10f5e85fc81c756f80a17b344bb434b9",
+    "semantic_hash": ""
+  },
+  "specs/001-user-login/spec.md": {
+    "mtime": 1793610174.3095882,
+    "seen": 1793610565.100155,
+    "ast_hash": "1b4aa19a1361faac9dd5ad892c824519",
+    "semantic_hash": ""
+  },
+  "specs/001-user-login/tasks.md": {
+    "mtime": 1793611788.7681363,
+    "seen": 1793611833.4493477,
+    "ast_hash": "0e82900196f02a66f0bb5c00bd8d2ad8",
+    "semantic_hash": ""
+  },
+  "specs/README.md": {
+    "mtime": 1793441673.5776665,
+    "seen": 1793608603.2859757,
+    "ast_hash": "9916aa2edc054dc0d592a4b7142890fc",
+    "semantic_hash": ""
+  },
+  "apps/mobile/assets/images/logo.png": {
+    "mtime": 1793602065.6036942,
+    "seen": 1793608603.285977,
+    "ast_hash": "07931b52cc1eebf38d36f03c5be41c0e",
+    "semantic_hash": ""
+  },
+  "docs/design/mobile/high-fidelity/login.png": {
+    "mtime": 1793524009.6692698,
+    "seen": 1793608603.285978,
+    "ast_hash": "7f8872a61f9801b34fba8ccd9f834257",
+    "semantic_hash": ""
+  },
+  "docs/design/mobile/sticker-sheet/oak-sports-academy-logo.png": {
+    "mtime": 1793602065.6036942,
+    "seen": 1793608603.2859795,
+    "ast_hash": "07931b52cc1eebf38d36f03c5be41c0e",
+    "semantic_hash": ""
+  },
+  "docs/design/mobile/sticker-sheet/sticker-sheet.png": {
+    "mtime": 1793523236.5205896,
+    "seen": 1793608603.2859807,
+    "ast_hash": "5fd1a615178be63a736f857fcf977de9",
+    "semantic_hash": ""
+  },
+  "docs/design/web/sticker-sheet/sticker-sheet.png": {
+    "mtime": 1793523236.5205896,
+    "seen": 1793608603.285982,
+    "ast_hash": "5fd1a615178be63a736f857fcf977de9",
+    "semantic_hash": ""
+  },
+  "apps/api/tests/security/audit.test.ts": {
+    "mtime": 1793610442.1842601,
+    "seen": 1793610565.1000564,
+    "ast_hash": "27327db5df180915c0d76d8d30e7eabc",
+    "semantic_hash": ""
+  },
+  "apps/api/tests/security/permissions.test.ts": {
+    "mtime": 1793610540.6634147,
+    "seen": 1793610565.1000614,
+    "ast_hash": "161ea81054a40f6c60d07cc8333aad40",
+    "semantic_hash": ""
+  },
+  "apps/api/tests/security/rate-limit.test.ts": {
+    "mtime": 1793610442.182815,
+    "seen": 1793610565.1000648,
+    "ast_hash": "fb8e0030f7545e1563fa9a0d401e8175",
+    "semantic_hash": ""
+  },
+  "apps/api/tests/security/rls.test.ts": {
+    "mtime": 1793610540.6763473,
+    "seen": 1793610565.1000676,
+    "ast_hash": "b301ddb591758ec72d8b8f98fc2354f4",
+    "semantic_hash": ""
+  },
+  "specs/001-user-login/contracts/auth.openapi.yaml": {
+    "mtime": 1793610174.312607,
+    "seen": 1793610565.100117,
+    "ast_hash": "e46cd5bd9e5ec519d622f59d65eb351c",
+    "semantic_hash": ""
+  },
+  "apps/api/tests/security/README.md": {
+    "mtime": 1793610540.6774,
+    "seen": 1793610565.1001256,
+    "ast_hash": "5de8844580ea59c73306f2e510bfaf3d",
+    "semantic_hash": ""
+  },
+  "docs/architecture/auth-data.md": {
+    "mtime": 1793611828.6774082,
+    "seen": 1793611833.449322,
+    "ast_hash": "0fb9630479b0068a1a4ddac1e3784f58",
+    "semantic_hash": ""
+  },
+  "package-lock.json": {
+    "mtime": 1793601230.2471914,
+    "seen": 1793608603.2859836,
+    "ast_hash": "372b679200fdf581d9096a4dc815728b",
+    "semantic_hash": ""
+  }
+}

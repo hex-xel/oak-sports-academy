@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-31
 
-**Status**: Revised — mobile-first scope
+**Status**: Revised — mobile-first scope; T016 alignment approved 2026-11-02
 
 **Input**: "Login for users on the mobile app first. The web app for admins and staff comes
 later this semester; the customer web app next semester."
@@ -60,7 +60,11 @@ without asking for credentials again.
 8. **Given** the device has no connection, **When** the user submits, **Then** a clear
    offline message appears and the button becomes usable again.
 9. **Given** a signed-in user, **When** they force-close and reopen the app, **Then** they
-   return to the home screen without signing in again.
+   restore the session after API validation without entering credentials again. While
+   offline or the API is starting, a restoring/retry state appears without a login flash.
+10. **Given** a verified account still in `PENDING_APPROVAL`, **When** correct credentials
+    are submitted, **Then** no session is issued and `403 ACCOUNT_PENDING_APPROVAL` is
+    returned. Once academy approval changes the status to `ACTIVE`, login is permitted.
 
 ---
 
@@ -119,13 +123,16 @@ shows the login screen with a "session ended" message rather than an error scree
 - **FR-001**: The app MUST authenticate customers with email and password against the
   API.
 - **FR-002**: The API MUST validate every sign-in request and reject malformed input
-  without revealing internal details.
+  without revealing internal details. Validate bodies, route parameters, and query
+  parameters with Zod; strip unexpected object properties before use.
 - **FR-003**: The API MUST rate-limit sign-in attempts by client address and by submitted
   email, and MUST report a retry delay when the limit is exceeded.
 - **FR-004**: Unknown email and wrong password MUST return the same status and message,
   and MUST NOT differ measurably in response time.
 - **FR-005**: Only active accounts with verified email may sign in; a "verify your email"
-  outcome is returned only after the password has been verified.
+  outcome is returned only after the password has been verified. Academy approval is
+  represented by transition from `PENDING_APPROVAL` to `ACTIVE`; pending and suspended
+  accounts cannot sign in. Email verification alone never grants approval.
 - **FR-006**: A successful sign-in MUST create a server-managed session with an
   unpredictable token of which only a protected form is stored.
 - **FR-007**: The mobile app MUST store the token using Expo SecureStore; it MUST NOT be
@@ -135,7 +142,9 @@ shows the login screen with a "session ended" message rather than an error scree
 - **FR-009**: Sessions MUST expire after a defined lifetime; expired, revoked, and unknown
   tokens MUST all be rejected identically.
 - **FR-010**: Signing out MUST revoke the current session server-side and clear the token
-  from secure storage; other devices MUST keep their sessions.
+  from secure storage; other devices MUST keep their sessions. Missing or malformed
+  Bearer headers return 401; well-formed expired, unknown, or revoked tokens return 204
+  from logout. All other protected endpoints reject these tokens with 401.
 - **FR-011**: The API MUST return the session token in the response body only to clients
   that identify themselves as native; a browser client MUST NOT receive it in a
   client-readable form. The web path is added with the web client feature.
@@ -148,6 +157,18 @@ shows the login screen with a "session ended" message rather than an error scree
   errors.
 - **FR-015**: On launch the app MUST attempt to restore a session from secure storage and
   MUST NOT show the login screen while that check is in progress.
+
+- **FR-016**: Protected routes MUST use centralized permissions from §6 followed by
+  ownership checks. Current account status and identity are loaded server-side.
+- **FR-017**: Sensitive auth tables MUST enforce RLS under a non-owner, non-BYPASSRLS
+  runtime role, with verified transaction-local identity and a narrowly scoped
+  authentication bootstrap path. Missing identity fails closed.
+- **FR-018**: Administrative mutations and their SHA-256 audit entry MUST commit
+  atomically; concurrent appends MUST not fork the chain. Permission denials emit
+  redacted security events. Audit runtime access is INSERT/SELECT only.
+- **FR-019**: A global IP limiter (100/15 minutes baseline) MUST complement login
+  limits (10/15 minutes/IP and 5/15 minutes/email), with Retry-After on 429. JSON bodies
+  are capped at 10 kB; mobile requests provide bounded timeout and explicit retry.
 
 ### Key Entities
 
@@ -168,13 +189,16 @@ shows the login screen with a "session ended" message rather than an error scree
   try during acceptance testing.
 - **SC-003**: No screen or API response reveals whether an email is registered.
 - **SC-004**: After sign-out, a replayed token fails on the very next request.
-- **SC-005**: Killing and reopening the app restores a valid session in under 2 seconds
-  without a network round trip to a login screen.
+- **SC-005**: On cold launch, read secure storage and show the restoring state within
+  2 seconds without flashing login. Enter authenticated screens after `/auth/session`
+  confirms identity. Measure network-dependent restore separately; offline/cold API
+  states offer retry. Memory-only user claims do not survive force-close.
 
 ## Assumptions
 
 - Accounts are created by a separate registration feature; seeded accounts provide one
-  verified customer, one unverified customer, and one suspended customer for testing.
+  verified active customer, one unverified customer, one suspended customer, and one
+  verified pending-approval customer for testing.
 - Roles stay in the data model, but only the customer role is exercised here; staff and
   admin authenticate through the later web client.
 - Session lifetime is 8 hours absolute, several devices per account allowed.

@@ -8,7 +8,7 @@
 
 Add customer authentication to the monorepo's first client: an Expo (React Native) app
 with a native login screen, SecureStore token persistence, and an auth context that
-restores the session on launch. The Express API gains an auth module backed by Prisma
+validates and restores the session on launch. The Express API gains an auth module backed by Prisma
 (User, Session, SignInAttempt) using Argon2id and opaque bearer tokens. No web client is
 built in this feature; the API is shaped so a cookie-based web login can be added later
 without changing the service layer.
@@ -34,15 +34,16 @@ runner; the app is verified on a device/emulator against the acceptance scenario
 **Project Type**: Mobile app + REST API monorepo
 
 **Performance Goals**: Sign-in API p95 under 700 ms server time excluding network; session
-restore on launch under 2 s without a network call to the login screen.
+cold launch enters restoring within 2 s without a login flash; identity confirmation
+requires `/auth/session` and has separately measured network/cold-start latency.
 
 **Constraints**: Bearer token only for this client (no cookie, no CSRF surface yet);
 Argon2id parameters from §4; physical device must reach the API over the LAN, so the base
 URL is configuration, not `localhost`; free-tier API cold starts may take 30–60 s and must
 surface as a retry state.
 
-**Scale/Scope**: Under 1,000 accounts, roughly 50 concurrent users; one login screen, four
-endpoints, two tables plus an attempt log.
+**Scale/Scope**: Under 1,000 accounts, roughly 50 concurrent users; one login screen;
+endpoints for login, session lookup, and logout; users, sessions, attempts, and audit tables.
 
 ## Constitution Check
 
@@ -55,7 +56,7 @@ in §4–§6:
 | Gate | Status |
 | --- | --- |
 | Native app, not a WebView wrapper (§2) | Pass — login is native; WebView use is deferred and bounded |
-| Mobile session in Expo SecureStore (§4) | Pass — FR-007, T016 |
+| Mobile session in Expo SecureStore (§4) | Pass — FR-007, token-store task |
 | Server-managed opaque sessions, no JWT | Pass — §4 |
 | Argon2id password hashing | Pass — §4 |
 | Backend-enforced authorization | Pass at the API level; role screens are later features |
@@ -165,7 +166,42 @@ web client feature; nothing in this feature should assume a browser exists.
 - There is no CSRF surface yet. When the web client is added, it will use an HttpOnly
   cookie and an origin check; the controller gains a second transport without changing the
   auth service.
-- `POST /auth/logout` requires a valid bearer token and is idempotent.
+- `POST /auth/logout` requires a well-formed Bearer header. Missing/malformed headers
+  return 401; well-formed expired/unknown/revoked tokens return 204 idempotently.
+
+## Approved T016 alignment — 2026-11-02
+
+Only verified ACTIVE customers may sign in. PENDING_APPROVAL means approval has not
+yet been granted; approval changes status to ACTIVE in a separate feature. On protected
+requests recheck current status, identity, permissions, and ownership.
+
+Use Zod to validate known fields and strip extras, including query/route objects.
+Apply the global 100/15 min IP limiter, login 10/15 min IP and 5/15 min normalized-email
+limiters with Retry-After, and a 10 kB JSON cap. Mobile timeout/offline errors offer
+explicit retry; no automatic replay of credential submissions.
+
+Replace duplicated role checks with `requirePermission` and §6 shared permission
+constants, unsigned ADMIN-all handling, then ownership checks. Add scoped database
+identity helpers to `lib/prisma.ts` and narrowly scoped database auth bootstrap functions
+through migrations; use a non-owner/non-BYPASSRLS runtime role and separate migration
+credentials. Sensitive auth tables have fail-closed RLS; transaction-local context must
+not leak through pooling. Never derive identity from client-supplied user IDs or roles.
+
+Add `AuditLog` to the data model and `modules/audit/audit.service.ts`. All appends take
+the same transaction advisory lock, read the head after locking, use the §4 hash order,
+and enforce unique previousHash. Administrative mutations append atomically; denial
+events commit independently. Audit role grants are INSERT/SELECT only. Verification
+limits, canonical encoding, and trusted API boundary are specified in research.md R13.
+No administrative workflows are implemented here.
+
+Cold launches lack in-memory claims: retain restoring/retry until session validation
+confirms identity, preserve the token on network failure, clear on 401. Warm navigation
+with known identity does not bypass API authorization. The revised SC-005 distinguishes
+local startup responsiveness from network-dependent restore.
+
+Security tests exercise runtime-role RLS, permission/ownership denial, audit integrity
+and concurrent appends, tiered limits, payload boundaries, and credential-safe errors.
+The owner runs all setup/migration/test commands and reports results at checkpoints.
 
 ## Phase Plan
 

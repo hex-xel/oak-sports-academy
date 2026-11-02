@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Oak Sports Academy — Authentication API (mobile login slice)
-  version: 0.1.0
+  version: 0.2.0
   description: |
     Login, session lookup, and logout for the native Android customer app.
 
@@ -58,7 +58,14 @@ paths:
         '403':
           description: |
             Credentials were correct but the account cannot sign in. Returned only after
-            password verification, so it does not disclose account existence.
+            password verification. Unverified, PENDING_APPROVAL, and SUSPENDED accounts
+            receive no session; pending accounts must become ACTIVE through approval.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: JSON body exceeds the 10 kB limit.
           content:
             application/json:
               schema:
@@ -107,7 +114,7 @@ paths:
         - bearerAuth: []
       responses:
         '204':
-          description: Session revoked. Idempotent — also returned when no valid session was supplied.
+          description: Current session revoked; well-formed expired, unknown, or already-revoked Bearer tokens also return 204.
         '401':
           description: Missing or malformed authorization header.
           content:
@@ -125,12 +132,14 @@ components:
   schemas:
     LoginRequest:
       type: object
-      additionalProperties: false
+      additionalProperties: true
+      description: Unknown properties are accepted and stripped before use; they cannot alter account state.
       required: [email, password]
       properties:
         email:
           type: string
           format: email
+          minLength: 3
           maxLength: 254
           example: customer@example.com
         password:
@@ -160,7 +169,7 @@ components:
 
     SessionResponse:
       type: object
-      required: [user, landingPath]
+      required: [user, landingPath, expiresAt]
       properties:
         user:
           $ref: '#/components/schemas/UserSummary'
@@ -202,6 +211,9 @@ components:
             - INVALID_CREDENTIALS
             - EMAIL_NOT_VERIFIED
             - ACCOUNT_SUSPENDED
+            - ACCOUNT_PENDING_APPROVAL
+            - FORBIDDEN
+            - PAYLOAD_TOO_LARGE
             - RATE_LIMITED
             - UNAUTHENTICATED
             - INTERNAL_ERROR
@@ -211,18 +223,13 @@ components:
         details:
           type: object
           description: Field-level validation messages only; omitted otherwise.
-```
-
-## Contract rules
-
-1. **No account enumeration.** `401 INVALID_CREDENTIALS` is returned for both an unknown
-   email and a wrong password, with identical wording and comparable timing.
-2. **Verification after authentication.** `403 EMAIL_NOT_VERIFIED` only follows a correct
-   password for that account.
-3. **No token echo beyond login.** `sessionToken` appears only in the login response; it is
-   never returned by `/auth/session`, never logged, never in a URL.
-4. **All rejection paths identical.** Expired, revoked, and fabricated tokens all produce
-   `401 UNAUTHENTICATED`.
-5. **Idempotent logout.** A second logout with the same token returns `204`.
-6. **Client header.** Login without `X-Client-Platform: mobile` returns
-   `400 UNSUPPORTED_CLIENT` — a deliberate guard until the cookie-based web client exists.
+x-contract-rules:
+    - Unknown email and wrong password return identical 401 INVALID_CREDENTIALS with comparable verification work.
+    - Account verification and approval errors follow correct password verification only.
+    - Only verified ACTIVE accounts receive sessions; PENDING_APPROVAL returns 403 ACCOUNT_PENDING_APPROVAL.
+    - sessionToken appears only in the login response; never in session lookup, logs, or URLs.
+    - Missing, expired, revoked, or unknown tokens return identical 401 UNAUTHENTICATED on session lookup.
+    - Logout requires a well-formed Bearer header; missing or malformed is 401, otherwise invalid or revoked is 204.
+    - Login requires X-Client-Platform mobile, otherwise 400 UNSUPPORTED_CLIENT; no Set-Cookie is issued.
+    - Global 100 per 15 minute IP baseline complements login 10 per IP and 5 per normalized email with Retry-After.
+    - Protected routes use server-loaded permissions, ownership checks, and runtime-role RLS.

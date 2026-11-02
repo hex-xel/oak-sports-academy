@@ -47,13 +47,15 @@ site visitors.
 
 ## Current status
 
-Planning and research. The repository structure and documentation exist; **no
-application code has been written**, so `graphify` has no code graph yet and there is
-nothing to run. Client order: the **customer mobile app (Expo) comes first**, the
-staff/admin web app comes later this semester, and the customer web app next semester.
-The first feature, `specs/001-user-login/` (customer sign-in and sign-out on mobile), is
-specified and planned with tasks drafted; implementation has not started. Update this
-section whenever the status changes.
+Phase 3 of `specs/001-user-login/` is in progress. The mobile login UI is complete
+and approved. T016 aligned the feature artifacts; T017 security tests are written but
+cannot collect until their backend modules and T031 harness exist. T018 adds the Prisma
+auth/audit schema; owner validation is pending. No auth database migration has been
+applied by the agent. Client order remains customer mobile first, staff/admin web later
+this semester, and customer web next semester.
+
+See [[architecture/auth-data|Authentication data layer]] for schema boundaries and
+[the task list](../specs/001-user-login/tasks.md) for current implementation status.
 
 ## Read in this order
 
@@ -79,7 +81,7 @@ section whenever the status changes.
 ## Next up
 
 - **Phase 2 (Login UI, T008-UI–T015-UI)** is complete and approved against high-fidelity designs.
-- Proceed to **Phase 3: Foundational Backend** (Prisma schema, database migration, Argon2id, session service, rate limiter, and security middleware, T016–T032).
+- Validate **T018 (Prisma schema)** with the owner, then proceed to **T019 (SQL migrations, RLS, and grants)**. Remaining foundational tasks continue through T036.
 - Milestone 1 supporting material in `docs/milestone-1/`.
 
 _Last updated: 2026-11-02_

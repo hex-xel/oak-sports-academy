@@ -40,7 +40,9 @@ SecureStore); token in a custom header (no benefit over standard Bearer).
 ## R4 — Rate limiting
 
 **Decision**: `express-rate-limit` in memory — 10 attempts / 15 min per client address,
-5 attempts / 15 min per submitted email.
+5 attempts / 15 min per normalized submitted email, plus a global IP baseline of
+100 requests / 15 min. Return Retry-After; bound in-memory key retention and trust
+forwarded IP headers only from configured proxies.
 
 **Rationale**: Satisfies §12 without new infrastructure. Two counters cover both password
 spraying across accounts and repeated attempts on one account.
@@ -64,14 +66,17 @@ revokes only the current token.
 
 ## R7 — Session restore on app launch
 
-**Decision**: On launch, read the token from SecureStore, load cached user claims from
-memory only, and validate against `GET /auth/session` in the background. A `401` clears
-the token and routes to login; a network error keeps the user signed in optimistically and
-retries on the next request.
+**Decision (approved 2026-11-02)**: Read SecureStore and stay in `restoring` while
+`GET /auth/session` confirms identity on cold launch. Memory-only claims cannot survive
+force-close. A 401 clears the token and routes to login once; offline/timeout preserves
+the token and offers retry without granting access to protected data. During a warm
+resume, existing in-memory identity may support local navigation while server requests
+still validate authorization.
 
 **Rationale**: §4 requires a valid session check. Blocking the splash screen on a cold API
 start would make the app feel broken on free hosting; optimistic restore plus background
-validation gives the 2-second target while still catching revoked tokens.
+validation is suitable only when identity is already in memory. The approved 2-second
+cold-launch target covers entry to the restoring state, not network confirmation.
 
 **Alternatives considered**: no local claims, always call the API first (slow, fails
 offline); trust the token until it fails (no revocation check until first action — partly
@@ -96,11 +101,14 @@ messages into the UI.
 
 ## R10 — Account status semantics
 
-**Decision**: `ACTIVE` and `PENDING_APPROVAL` may sign in; `SUSPENDED` may not.
-`PENDING_APPROVAL` users see a restricted home screen.
+**Decision (owner-approved 2026-11-02)**: Only verified `ACTIVE` accounts may sign in.
+Unapproved accounts remain `PENDING_APPROVAL` and receive `403 ACCOUNT_PENDING_APPROVAL`
+only after correct password verification. Academy approval transitions the account to
+`ACTIVE`; this feature reads status and does not implement the approval workflow.
+`SUSPENDED` accounts cannot sign in; protected session checks also enforce current status.
 
-**Rationale**: §5 separates verification from approval; §12 says unapproved accounts cannot
-perform restricted actions, which implies they can authenticate.
+**Rationale**: The owner explicitly requires academy approval before login. Email
+verification and academy approval remain separate conditions.
 
 ## R11 — WebView session handoff (deferred design)
 
@@ -122,8 +130,33 @@ tables.
 **Rationale**: Security tests must exercise real Prisma queries; mocking them would test
 the mock.
 
+## R13 — Approved security alignment (2026-11-02)
+
+- Validate required fields and strip unexpected properties; never pass raw body objects
+  to Prisma. Unknown properties cannot grant roles, status, or permissions.
+- Logout requires a syntactically valid Bearer header: missing/malformed is 401; a
+  well-formed expired/unknown/revoked token is 204. Other protected routes remain 401.
+- Use §6 permission mapping, unsigned 32-bit normalization for ADMIN-all, and all-bit
+  matching; follow permission gates with ownership checks.
+- Runtime DB role owns no tables and has no BYPASSRLS. Use transaction-local verified
+  identity; pooled connections must not retain it. Restrict pre-auth lookup and session
+  bootstrap to narrow database functions with fixed search_path, minimal output,
+  explicit grants, and no arbitrary query interface. Their owner has only the needed
+  access. Migration credentials never enter request processing. RLS protects against
+  omitted filters, not a fully compromised trusted API identity-setting process.
+- Serialize audit appends using one transaction-scoped advisory lock shared by every
+  writer. Read the chain head after locking, hash fields in the exact §4 order, and
+  insert with a unique previousHash constraint. Hash a deterministic encoding of a
+  redacted payload; specify exact UTF-8 field encoding and UTC timestamp precision.
+  Administrative state change and append share the transaction; a denial event commits
+  separately from the rejected operation. No passwords/tokens/OTPs in audit material.
+- Hash-chain verification checks links and recomputed hashes from the zero genesis.
+  It cannot prove authenticity against a privileged full rewrite or detect tail deletion
+  without a separately trusted head checkpoint. Document this boundary without claiming
+  digital-signature non-repudiation or implementing an unapproved external service.
+
 ## Outstanding unknowns
 
-- Session lifetime (8 h) awaits client confirmation.
+- Session lifetime remains the planned 8-hour absolute baseline.
 - Whether staff and admin will share the customer API's login endpoint is deferred to the
   web-client feature; the service layer is transport-agnostic so either answer is cheap.

@@ -5,9 +5,10 @@ Oak Sports Academy Taguig Branch. It will centralize the registration and
 training-management activities that are currently handled through Google Forms
 and manual staff processes.
 
-> **Project status:** Planning and research. The repository structure and this
-> overview are in place; application features, architecture artifacts, and
-> prototype benchmark code have not yet been implemented.
+> **Project status:** Mobile login UI is complete; foundational authentication backend
+> work is in progress. Security tests and the Prisma schema are written; database
+> migration, backend implementation, and owner-run validation remain pending. See
+> [the project index](docs/index.md) and [login tasks](specs/001-user-login/tasks.md).
 
 ## Project goals
 
@@ -87,3 +88,48 @@ that the corresponding feature, design, or benchmark has been completed.
   development rules.
 - `specs/requirements.md` — requirements specification placeholder; changes
   require approval.
+
+## T017 security-test checkpoint
+
+Foundational tests are written in `apps/api/tests/security/`; the test-first module
+interfaces and isolated database fixture requirements are documented in
+[the security test guide](apps/api/tests/security/README.md).
+
+Run these only after T019–T031 provide the implementation, reviewed development
+migrations, and dedicated test database harness. The owner performs setup and execution.
+
+1. Open PowerShell in `C:\Dev\School\oak-sports-academy`.
+2. At T031, configure the ignored `apps/api/.env.test` using that task's documented
+   runtime/fixture credentials and explicit disposable-database opt-in. Never point it
+   at a shared, development, or production database. Apply reviewed migrations using
+   T020's owner-run steps against the dedicated test database.
+3. Run the security suites:
+   ```powershell
+   npm test -w apps/api -- tests/security
+   ```
+   Success means all four suites execute with no skipped cases, and all assertions
+   pass under the runtime database role where required. Collection errors for missing
+   modules before T031 are expected prerequisites, not a successful test result.
+4. If any step fails, stop and share redacted output. Do not install new packages,
+   weaken assertions, swap in privileged runtime credentials, or reset another database
+   to make tests pass. Wait for fixes before continuing dependent work.
+
+## T018 Prisma schema validation
+
+The schema is in `apps/api/prisma/schema.prisma`. Its approved model is linked from
+[the authentication data-layer note](docs/architecture/auth-data.md).
+
+The owner runs validation with the already installed Prisma executable:
+
+```powershell
+cd C:\Dev\School\oak-sports-academy\apps\api
+..\..\node_modules\.bin\prisma.cmd validate --schema prisma/schema.prisma
+```
+
+Expected: Prisma reports that `prisma/schema.prisma` is valid. This command does not
+apply migrations or generate the client. It reads DATABASE_URL and DIRECT_URL from
+the existing ignored `apps/api/.env`; never paste their values into chat. If either
+variable is absent, provide the existing development connection settings privately
+before retrying. If the executable is missing or validation fails, stop and share
+redacted output; do not install/upgrade packages or apply migrations to work around it.
+Wait for review before T019. Runtime role/grant changes are handled by T019/T021.

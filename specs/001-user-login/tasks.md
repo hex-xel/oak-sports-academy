@@ -161,279 +161,344 @@ high-fidelity design. No real authentication yet — the form submits to a conso
 
 ## Phase 3: Foundational Backend (Blocking Prerequisites)
 
-**Purpose**: Database, security primitives, token storage, and app shell.
+**Purpose**: Align the login slice with the updated `specifications.md` §§4–6,
+then build database isolation, security primitives, token storage, and the app shell.
+Phases 0–2 above remain completed and unchanged.
 
-**⚠️ CRITICAL**: No real authentication can work until this phase is complete.
-The UI screens from Phase 2 are wired up in Phase 4 after this.
+**T016 approved and aligned (2026-11-02)**: Only verified ACTIVE accounts may sign in;
+PENDING_APPROVAL is denied until approval transitions the account to ACTIVE. Unknown
+input properties are stripped. Logout header/idempotence behavior, standalone attempts,
+runtime-role RLS, permission gates, audit serialization, and cold-launch restore
+semantics are recorded in the feature artifacts. `specifications.md` remains unchanged.
 
-- [ ] T016 Create the Prisma schema with `Role`, `AccountStatus`, `User`, `Session`,
-  and `SignInAttempt` per `data-model.md` in `apps/api/prisma/schema.prisma`
+**Scope**: Customer mobile login/logout/session recovery only. Scheduling (CC-WIS),
+participant lifecycle FSM, document screening/uploads, guardian consent workflows,
+registration/OTP/reset flows, and web cookie/CSRF integration belong to their features.
+Carry forward their security boundaries without implementing their business workflows.
 
-- [ ] T017 Apply the initial migration and generate the Prisma client:
+- [x] T016 Review and propose alignment of `spec.md`, `plan.md`, `research.md`,
+  `data-model.md`, and `contracts/auth.openapi.yaml` in `specs/001-user-login/` with
+  `specifications.md` §§4–6. Resolve the conflicts above with the owner; modify those
+  artifacts only after explicit approval. Record the approved RLS trust boundary,
+  audit serialization strategy, role/permission mapping, and account eligibility.
+
+- [x] T017 Write foundational security tests in `apps/api/tests/security/` for the
+  approved permission matrix (including combined flags and `0xFFFFFFFF`), ownership
+  denial, cross-account RLS isolation under the runtime database role, audit-chain
+  verification/tampering, and global/sensitive rate limits. Add fixtures only, not
+  production participant/enrollment tables. Owner runs these after T031 setup.
+  Written 2026-11-02; not executed. Deferred module/fixture interfaces and coverage are
+  documented in `apps/api/tests/security/README.md`; owner-run command is in `README.md`.
+
+- [x] T018 Create `apps/api/prisma/schema.prisma` with `Role`, `AccountStatus`, `User`,
+  `Session`, `SignInAttempt`, and the approved `AuditLog` model. Preserve unique normalized
+  email, UUID identifiers, nullable verification/revocation timestamps, session expiry
+  and attempt-window indexes. `tokenHash`: 64 lowercase hex characters (SHA-256);
+  `userAgent`: 255 characters maximum; `ipAddress`: 45 characters maximum (IPv6),
+  truncate rather than reject. Attempts must support unknown emails without a user FK.
+  Audit fields are those in §4, including actor, target, payloadHash, previousHash,
+  currentHash, and UTC timestamp; do not conflate attempts with administrative audit logs.
+  Schema written 2026-11-02; owner Prisma validation pending. No migration/client generation run.
+
+- [ ] T019 Create reviewed SQL migrations in `apps/api/prisma/migrations/` for the
+  schema, RLS on sensitive auth tables, and audit INSERT/SELECT-only runtime privileges.
+  Separate privileged migrations from the non-owner, non-BYPASSRLS runtime connection.
+  Establish transaction-local identity from a verified session, never client claims;
+  specify a narrowly scoped pre-auth lookup/session-bootstrap path that does not bypass
+  tenant isolation for general queries. Fail closed on missing identity and avoid
+  leaking context through pooled connections. Do not create future-feature tables.
+
+- [ ] T020 Owner applies the reviewed development migration and generates the client
+  from `C:\Dev\School\oak-sports-academy\apps\api`:
   ```powershell
   npx prisma migrate dev --name init_auth
   npx prisma generate
   ```
-  Run from `apps/api/`. Confirm the `oak_user`, `oak_session`, and `oak_sign_in_attempt`
-  tables appear in the Supabase dashboard.
+  Expected: migration succeeds and `users`, `sessions`, `sign_in_attempts`, plus the
+  approved audit table exist with the reviewed policies/grants. On failure, stop and
+  share redacted output; do not reset a shared database or continue dependent tasks.
 
-- [ ] T018 [P] Create the Prisma client singleton in `apps/api/src/lib/prisma.ts`
+- [ ] T021 Create `apps/api/src/config/env.ts` and update `apps/api/.env.example` with
+  Zod-validated runtime/migration URLs, PORT, NODE_ENV, and SESSION_TTL_HOURS (8).
+  Validate required values at startup without logging secrets. Document the runtime
+  role and trusted proxy configuration; do not assume Supabase service credentials
+  or a privileged connection provide RLS isolation.
 
-- [ ] T019 [P] Create Zod-validated environment loading that fails fast on missing
-  `DATABASE_URL` in `apps/api/src/config/env.ts`
+- [ ] T022 Create `apps/api/src/lib/prisma.ts` with a Prisma singleton and the approved
+  transaction-scoped database identity helper from T019; keep privileged lookup access
+  confined to authentication bootstrap. Use parameterized queries only.
 
-- [ ] T020 Create error classes and the Express error handler returning
-  `{code, message, details?}` with no stack traces in
-  `apps/api/src/middleware/error-handler.ts`
+- [ ] T023 [P] Create safe API errors and Express handling in
+  `apps/api/src/middleware/error-handler.ts`: `{code, message, details?}`, field-only
+  validation details, stable payload-too-large and internal-error handling, no stack,
+  database details, credentials, or tokens in responses/logs.
 
-- [ ] T021 [P] Create per-address (10/15 min) and per-email (5/15 min) rate limiters
-  with `Retry-After` in `apps/api/src/middleware/rate-limit.ts`
+- [ ] T024 [P] Create global IP and sensitive endpoint rate limiters in
+  `apps/api/src/middleware/rate-limit.ts`: global baseline 100 requests/15 minutes;
+  login 10/15 minutes/IP and 5/15 minutes/normalized email, standardized `Retry-After`.
+  Do not trust arbitrary forwarded headers. Bound in-memory key retention and document
+  restart/per-instance limitations. Verification endpoints reuse this later.
 
-- [ ] T022 Create the Argon2id password service (hash, verify, constant dummy verify)
-  with §4 parameters in `apps/api/src/modules/auth/password.service.ts`
+- [ ] T025 [P] Create `apps/api/src/modules/auth/password.service.ts` with library
+  Argon2id hash/verify: 19 MiB (19456 KiB), iterations 2, parallelism 1, automatic salt,
+  and a reusable dummy hash verification for unknown accounts. Owner benchmarks on the
+  deployment host before tuning; never implement cryptography manually.
 
-- [ ] T023 Create the session service with 256-bit token generation, SHA-256 hashing,
-  create/verify/revoke, and 8-hour expiry in
-  `apps/api/src/modules/auth/session.service.ts`
+- [ ] T026 Create `apps/api/src/modules/auth/session.service.ts`: crypto-generated
+  256-bit opaque token, SHA-256 hash stored server-side, 8-hour absolute expiry,
+  create/verify/current-session revoke and revoke-all helper for future security events.
+  Check current account restrictions on protected requests; never return DB session
+  records or raw tokens beyond successful login. Other device sessions survive logout.
 
-- [ ] T024 [P] Create the SecureStore wrapper (get/set/delete, key constant) in
-  `apps/mobile/lib/token-store.ts`
+- [ ] T027 Create `apps/api/src/modules/audit/audit.service.ts` with append and verify
+  operations using Node crypto SHA-256, the exact §4 field order, canonical payload
+  hashing, and genesis previousHash of 64 zeros. Serialize concurrent appends within
+  the database transaction so the chain cannot fork; administrative mutations and their
+  audit entry must commit atomically. Gate denials emit a redacted security audit event.
+  No administrative CRUD endpoints are introduced in this login feature.
 
-- [ ] T025 [P] Create `requireAuth` rejecting missing, expired, revoked, and unknown
-  tokens with `401 UNAUTHENTICATED` in `apps/api/src/middleware/require-auth.ts`
+- [ ] T028 Create centralized permissions in `packages/shared/src/permissions.ts` and
+  `apps/api/src/middleware/require-permission.ts`, using the approved §6 constants and
+  role mapping. Require all requested bits with `(actual & required) === required`,
+  handle the unsigned ADMIN-all mask consistently, return `403 FORBIDDEN` on denial,
+  and audit it. Role membership alone never grants access to another customer's data.
 
-- [ ] T026 [P] Create `requireRole(...roles)` returning `403 FORBIDDEN` when the role
-  is not allowed in `apps/api/src/middleware/require-role.ts`
+- [ ] T029 Create `apps/api/src/middleware/require-auth.ts` and
+  `apps/api/src/middleware/require-ownership.ts`: identical `401 UNAUTHENTICATED` for
+  missing/expired/revoked/unknown tokens, server-loaded permissions, permission gate
+  followed by resource ownership checks and scoped DB access. In this slice enforce
+  self-access for `/auth/session`; linked minors/program scopes await their models.
 
-- [ ] T027 Wire Helmet, a 10 kB JSON body limit, `/api/v1` routing, `0.0.0.0` binding,
-  and error handling in `apps/api/src/app.ts` and `apps/api/src/server.ts`
+- [ ] T030 Wire Helmet (including an explicit API-appropriate CSP), the global limiter,
+  10 kB JSON limit, `/api/v1` routing, and final error handling in `apps/api/src/app.ts`
+  and `apps/api/src/server.ts`; bind development API to `0.0.0.0`. Validate bodies,
+  route parameters, and query parameters on exposed routes using Zod, stripping
+  unexpected properties per approved T016 alignment. Mobile bearer routes issue no cookies.
 
-- [ ] T028 Create the shared auth types (`UserSummary`, `LoginResponse`, `ApiError`)
-  and the error-code union in `packages/shared/src/auth-types.ts` and
-  `packages/shared/src/error-codes.ts`
+- [ ] T031 Configure Vitest/Supertest in `apps/api/vitest.config.ts` and
+  `apps/api/tests/helpers/db.ts`: dedicated test DB, migration precondition, isolated
+  runtime-role RLS fixtures and privileged fixture cleanup, deterministic clocks and
+  limiter resets. Never truncate production/shared data; runtime audit permissions
+  remain INSERT/SELECT-only. Owner runs `npm test -w apps/api` from the repository root
+  after preparing `.env.test`; expected all implemented foundational tests pass.
+  On failure stop, share redacted output, and fix before proceeding.
 
-- [ ] T029 Create the seed script with verified, unverified, and suspended customer
-  accounts, refusing to run when `NODE_ENV=production`, in
-  `apps/api/prisma/seed.ts`. Then run it:
-  ```powershell
-  npx prisma db seed
-  ```
+- [ ] T032 Create `apps/api/prisma/seed.ts` and seed configuration in
+  `apps/api/package.json` for verified active, unverified, suspended, and approved
+  pending-approval denial scenarios. Read development passwords from ignored environment
+  configuration, hash with Argon2id, refuse production, print no secrets. Owner runs
+  `npx prisma db seed` from `apps/api`; expected fixture accounts exist. On failure
+  stop and report redacted output; do not alter shared data manually.
 
-- [ ] T030 Configure Vitest + Supertest with a `.env.test` database URL and a
-  table-truncation helper in `apps/api/vitest.config.ts` and
-  `apps/api/tests/helpers/db.ts`
+- [ ] T033 Create shared request/response types and error codes in
+  `packages/shared/src/auth-types.ts`, `packages/shared/src/error-codes.ts`, and export
+  through `packages/shared/src/index.ts`; follow the reconciled contract, including
+  `FORBIDDEN`, safe validation/rate-limit errors, and token-free session responses.
 
-- [ ] T031 [P] Create the mobile API client: base URL from `expo-constants`, JSON
-  headers, bearer injection, and a typed `ApiError` in `apps/mobile/lib/api.ts`
+- [ ] T034 [P] Create `apps/mobile/lib/token-store.ts`: SecureStore get/set/delete,
+  one key constant, handled storage failures, no AsyncStorage/log/crash-report fallback.
 
-- [ ] T032 Create the auth context exposing `user`, `status`
-  (`restoring|signedOut|signedIn`), `signIn`, `signOut` in
-  `apps/mobile/lib/auth-context.tsx`
+- [ ] T035 Create `apps/mobile/lib/api.ts`: configured LAN/API URL via Expo config and
+  development override, JSON headers, `X-Client-Platform: mobile` on login, bearer
+  injection, typed errors, bounded timeout and explicit retry for cold starts. Preserve
+  Retry-After; do not automatically replay login/logout or log sensitive request data.
 
-**Checkpoint**: Schema migrated, seed data exists, services are unit-testable, the API
-client and auth context are ready to wire into the UI screens from Phase 2.
+- [ ] T036 Create `apps/mobile/lib/auth-context.tsx` exposing user, status
+  (`restoring|signedOut|signedIn`), signIn/signOut, and session invalidation. Keep the
+  startup guard in restoring until secure storage is read; restoration is completed
+  in US3. Never treat client state or cached claims as API authorization.
+
+**Checkpoint**: Owner confirms migration, security tests, and seed results. Permission
+checks, runtime RLS, and audit-chain guarantees are exercised with the real database.
 
 ---
 
 ## Phase 4: User Story 1 - Sign in on the app (Priority: P1) 🎯 MVP
 
-**Goal**: Wire the Phase 2 UI screens to the Phase 3 backend. A seeded customer signs
-in on the device and reaches the home screen.
+**Goal**: Wire the approved native UI to real customer authentication.
+**Independent Test**: Verified eligible account signs in; failures remain safe and
+usable; force-close/reopen acceptance finishes with US3.
 
-**Independent Test**: Launch the app with the seeded verified account, sign in, confirm
-the home screen; then confirm wrong credentials and an unverified account behave as
-specified.
+- [ ] T037 [P] [US1] Write service tests in `apps/api/tests/auth/login.service.test.ts`
+  for valid login, normalized email, wrong/unknown credentials with dummy verification,
+  unverified/suspended/pending status under the approved eligibility rule, attempt
+  recording, session hash-only storage, and no sensitive response fields.
 
-### Tests for User Story 1 ⚠️
+- [ ] T038 [P] [US1] Write API tests in `apps/api/tests/auth/login.api.test.ts` for
+  mobile-header enforcement, no Set-Cookie, 200 response contract, validation and unknown
+  property stripping, identical credential errors, verification after password check,
+  both sensitive limiter thresholds plus global limiting/Retry-After, 10 kB rejection,
+  and safe internal errors. Owner confirms expected failures before implementation.
 
-> Write these first; confirm they fail before implementing T036–T038.
+- [ ] T039 [US1] Create `apps/api/src/modules/auth/auth.schemas.ts`: JSON object body,
+  email trimmed/lowercased (3–254 characters, single @ and dotted domain), password
+  1–128 characters without trimming; validate client header and strip unexpected fields
+  under T016 approval. Add matching client-side malformed-email/empty-field validation
+  in `apps/mobile/features/auth/LoginForm.tsx` so invalid input sends no request.
 
-- [ ] T033 [P] [US1] Service tests for valid login, wrong password, unknown email
-  (parity), unverified, and suspended accounts in
-  `apps/api/tests/auth/login.service.test.ts`
+- [ ] T040 [US1] Implement `apps/api/src/modules/auth/auth.service.ts`: lookup through
+  approved pre-auth path, real/dummy verification, account restrictions after credential
+  verification, successful/failed attempt recording, lastSignInAt, session creation.
 
-- [ ] T034 [P] [US1] API tests for the `X-Client-Platform` guard, 200 token shape with
-  no `Set-Cookie`, 400 validation, 401 parity, 403 unverified, and 429 in
-  `apps/api/tests/auth/login.api.test.ts`
+- [ ] T041 [US1] Implement controllers/routes in
+  `apps/api/src/modules/auth/auth.controller.ts`, `apps/api/src/modules/auth/auth.routes.ts`,
+  and register in `apps/api/src/app.ts`. Only `POST /auth/login` returns sessionToken
+  and expiresAt; `GET /auth/session` uses auth, permission, ownership, and scoped DB
+  access and returns safe user/expiry data with no token or hashes. Attach login limiters.
 
-### Implementation for User Story 1
+- [ ] T042 [US1] Map safe API/offline/timeout/rate-limit copy in
+  `apps/mobile/features/auth/messages.ts`, then implement
+  `apps/mobile/features/auth/useLogin.ts` and wire `LoginForm.tsx`: API call, successful
+  SecureStore write before entering signedIn, disabled submit while pending, recoverable
+  failure, Retry-After countdown, and explicit retry after cold-start timeout.
 
-- [ ] T035 [P] [US1] Create the strict Zod login schema plus the client-platform check
-  in `apps/api/src/modules/auth/auth.schemas.ts`
+- [ ] T043 [US1] Replace mock guard/home state in `apps/mobile/app/_layout.tsx` and
+  `apps/mobile/app/index.tsx` using real auth context and approved account restrictions.
+  Inspect the mobile high-fidelity mockups/sticker sheet before any UI edit, retain the
+  official crest, 360 dp usability, keyboard avoidance, and accessible error announcements.
 
-- [ ] T036 [US1] Implement the login service: lookup, dummy-hash verify, status checks,
-  attempt recording, session creation in `apps/api/src/modules/auth/auth.service.ts`
+- [ ] T044 [US1] Owner runs `npm test -w apps/api` from the repository root and the
+  sign-in/failure/device checks in `specs/001-user-login/quickstart.md` §5 (start with
+  `npm run dev -w apps/api` and `npm run dev -w apps/mobile` in separate root terminals).
+  Expected: tests pass and UI matches approved designs. On failure stop and share
+  redacted output/screenshots; agent fixes before proceeding.
 
-- [ ] T037 [US1] Implement `POST /auth/login` and `GET /auth/session` returning the
-  bearer token and `expiresAt` in `apps/api/src/modules/auth/auth.controller.ts` and
-  `apps/api/src/modules/auth/auth.routes.ts`
-
-- [ ] T038 [US1] Register the auth router under `/api/v1` with the login rate limiters
-  in `apps/api/src/app.ts`
-
-- [ ] T039 [US1] Replace the mock `onSubmit` in `LoginForm` with `useLogin`: calls the
-  API, stores the token in SecureStore, updates auth context, and routes to `/` in
-  `apps/mobile/features/auth/useLogin.ts` and `apps/mobile/features/auth/LoginForm.tsx`
-
-- [ ] T040 [P] [US1] Map API error codes to enumeration-safe user-facing copy in
-  `apps/mobile/features/auth/messages.ts`
-
-- [ ] T041 [US1] Update the root layout to use the real auth context (replace the
-  placeholder boolean flag from T014-UI) in `apps/mobile/app/_layout.tsx`
-
-- [ ] T042 [US1] Update the home screen to show the real signed-in email and role from
-  the auth context in `apps/mobile/app/index.tsx`
-
-- [ ] T043 [US1] Add retry and offline states to the form, with the button re-enabled
-  after failure, in `apps/mobile/features/auth/LoginForm.tsx`
-
-- [ ] T044 [US1] Run the device acceptance pass in `quickstart.md` §5
-  (sign-in and failure rows)
-
-**Checkpoint**: MVP works end to end on a device.
+**Checkpoint**: Sign-in works on-device with the new security controls. Persistent
+relaunch behavior is accepted after Phase 6, not claimed complete here.
 
 ---
 
 ## Phase 5: User Story 2 - Sign out (Priority: P2)
 
-**Goal**: Sign-out revokes the server session and deletes the device token.
+**Goal**: Revoke the current session remotely and clear SecureStore locally.
+**Independent Test**: Online logout rejects a replayed token immediately; another
+session remains valid; offline logout clears local state and leaves remote expiry.
 
-**Independent Test**: Copy the stored token, sign out, replay it against
-`/auth/session` → 401.
+- [ ] T045 [US2] Write `apps/api/tests/auth/logout.api.test.ts` for current-token
+  revocation, repeated logout, other-device independence, and missing/malformed header
+  behavior approved in T016. Owner confirms expected failures before implementation.
 
-### Tests for User Story 2 ⚠️
+- [ ] T046 [US2] Wire current-session revocation into
+  `apps/api/src/modules/auth/auth.controller.ts` and
+  `apps/api/src/modules/auth/auth.routes.ts`: `POST /auth/logout` returns 204 for an
+  already-revoked supplied token; follow the reconciled contract for malformed headers.
 
-- [ ] T045 [P] [US2] API tests for revocation, idempotent logout, and rejection of a
-  replayed token in `apps/api/tests/auth/logout.api.test.ts`
+- [ ] T047 [US2] Implement remote logout with local cleanup in finally in
+  `apps/mobile/lib/auth-context.tsx`, then wire `apps/mobile/app/index.tsx`. Handle
+  SecureStore deletion errors explicitly rather than claiming a successful local logout.
 
-### Implementation for User Story 2
-
-- [ ] T046 [US2] Add `revokeSession` for the current token and expired sessions in
-  `apps/api/src/modules/auth/session.service.ts`
-
-- [ ] T047 [US2] Implement `POST /auth/logout` returning 204 and tolerating a missing
-  session in `apps/api/src/modules/auth/auth.controller.ts` and
-  `apps/api/src/modules/auth/auth.routes.ts`
-
-- [ ] T048 [US2] Add sign-out to the auth context: revoke remotely, delete from
-  SecureStore, reset state in `apps/mobile/lib/auth-context.tsx`
-
-- [ ] T049 [US2] Wire the sign-out button on the home screen to the auth context
-  sign-out function in `apps/mobile/app/index.tsx`
-
-- [ ] T050 [US2] Verify offline sign-out still clears the local token and returns to
-  login
+- [ ] T048 [US2] Owner reruns `npm test -w apps/api` from the repository root and the
+  online/offline sign-out cases in `specs/001-user-login/quickstart.md`. Expected:
+  local token removed, login visible, copied online-revoked token gets 401, second
+  device remains signed in. On failure stop and report redacted evidence.
 
 ---
 
 ## Phase 6: User Story 3 - Session expiry and recovery (Priority: P3)
 
-**Goal**: An expired or revoked session returns the user to login without crashing.
+**Goal**: Restore valid sessions and recover safely from invalid sessions.
+**Independent Test**: Force-close/reopen restores a valid session; expired/revoked/
+fabricated tokens cause one login redirect with a session-ended notice.
 
-**Independent Test**: Invalidate the token in the database, reopen the app, confirm
-the login screen with a "session ended" note and no error screen.
+- [ ] T049 [US3] Write `apps/api/tests/auth/session.api.test.ts` for identical missing,
+  expired, revoked, and unknown-token 401s; current account restrictions, safe response
+  fields, permission denials, and cross-user isolation. Owner confirms expected failures.
 
-### Tests for User Story 3 ⚠️
+- [ ] T050 [US3] Complete startup restore in `apps/mobile/lib/auth-context.tsx`: read
+  SecureStore, avoid login-screen flicker, validate `/auth/session` in the background,
+  clear invalid sessions, and handle offline/cold-start retries. Do not invent cached
+  user claims on a cold launch; show a restoring/offline state when identity is unknown.
+  Optimistic local navigation never authorizes protected data requests.
 
-- [ ] T051 [P] [US3] API tests proving expired, revoked, and fabricated tokens all
-  return identical 401 in `apps/api/tests/auth/session.api.test.ts`
+- [ ] T051 [US3] Add one authenticated-request 401 invalidation handler in
+  `apps/mobile/lib/api.ts` connected to `apps/mobile/lib/auth-context.tsx`; distinguish
+  failed login credentials from expired sessions and prevent redirect loops/races.
 
-### Implementation for User Story 3
+- [ ] T052 [US3] Preserve and validate an internal intended route in
+  `apps/mobile/app/login.tsx` and add accessible session-ended copy in
+  `apps/mobile/features/auth/messages.ts`; reject external/unrecognized destinations,
+  never put tokens in navigation URLs, and inspect approved designs before UI changes.
 
-- [ ] T052 [US3] Implement launch restore: read the token, set `signedIn`
-  optimistically, validate in the background, clear on 401 in
-  `apps/mobile/lib/auth-context.tsx`
-
-- [ ] T053 [US3] Add a single 401 handler in the API client that clears the token and
-  redirects to login once, without loops in `apps/mobile/lib/api.ts`
-
-- [ ] T054 [US3] Preserve the intended route and return to it after re-login via a
-  `next` parameter in `apps/mobile/app/login.tsx`
-
-- [ ] T055 [US3] Show a "session ended" notice after an expiry redirect in
-  `apps/mobile/features/auth/messages.ts`
+- [ ] T053 [US3] Owner runs `npm test -w apps/api` from the repository root and expiry,
+  offline restore, concurrent-401, re-login route-return, and force-close/reopen checks
+  in `specs/001-user-login/quickstart.md`. Expected: safe recovery, no loops, valid
+  entry to restoring within 2 seconds; measure network confirmation and warm/cold API
+  cases separately.
+  Stop on failures or unmet targets and report evidence rather than marking complete.
 
 ---
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T056 [P] Write the authentication architecture note (sequence, token storage,
-  expiry, rate limits, limitations) in `docs/architecture/auth.md`
+- [ ] T054 [P] Write/update `docs/architecture/auth.md` with token flow, account
+  eligibility, permission gates/ownership, RLS runtime/bootstrap trust boundary,
+  transaction-local pooled identity, audit append/verify protocol, concurrency,
+  rate-limit limitations, TLS deployment requirements, and cold-start recovery.
 
-- [ ] T057 [P] Write `ADR-0001` recording opaque bearer sessions over JWT, with
-  alternatives, in `docs/decisions/ADR-0001-opaque-sessions.md`
+- [ ] T055 [P] Inspect existing ADR numbering in `docs/decisions/` before creating or
+  updating an opaque-session decision note there; document approved RLS/audit decisions
+  without overwriting unrelated ADRs. New notes require status/owner/milestone frontmatter.
 
-- [ ] T058 Review responses, logs, and the app for token, hash, and internal-detail
-  leakage in `apps/api/src/modules/auth/` and `apps/mobile/lib/`
+- [ ] T056 [P] Document deferred content-only WebView handoff in
+  `docs/architecture/webview-strategy.md`: single-use exchange code, no bearer token
+  in URLs, native auth preserved; do not implement the handoff in this feature.
 
-- [ ] T059 Document the WebView handoff decision and its §4 constraint in
-  `docs/architecture/webview-strategy.md`
+- [ ] T057 Update `specs/001-user-login/quickstart.md` after owner approval with
+  runtime-role RLS tests, audit privilege/integrity/concurrency checks, limiter/body
+  boundaries, permission denials, SecureStore failures, and warm/cold session recovery.
+  Keep actual setup commands in `README.md` and link rather than duplicate them.
 
-- [ ] T060 Update `docs/index.md` status and next-up after the feature is merged
+- [ ] T058 Review `apps/api/src/`, `apps/mobile/lib/`, and
+  `apps/api/prisma/migrations/` for leaked secrets/hashes, bypassable authorization,
+  unsafe raw SQL, privileged runtime roles, forged identity context, and audit mutation
+  privileges. Verify exported APIs have required JSDoc and workaround sources.
 
-- [ ] T061 Run `graphify extract . --code-only` followed by `graphify update .`
-  once all code is in place
+- [ ] T059 Owner runs final `npm test -w apps/api` from the repository root and all
+  acceptance scenarios in `specs/001-user-login/quickstart.md`; include Argon2id/login
+  performance on the deployment host. Expected: suites/scenarios pass, no secret leakage,
+  and targets met. Stop on failure; record limitations before demonstration/deployment.
+
+- [ ] T060 Update `docs/index.md` status/next-up and link new architecture/decision
+  notes; update `README.md` for the implemented public modules and owner-run commands.
+  Keep documentation status consistent with actual owner-confirmed validation.
+
+- [ ] T061 Refresh `graphify-out/graph.json` after implementation using
+  `graphify update .` from the repository root; no installs/bootstrap. Expected: graph
+  update succeeds and reflects changed code. If unavailable/failing, stop and give the
+  owner the exact command and error without installing tools.
 
 ---
 
 ## Dependencies & Execution Order
 
-### Phase Dependencies
+- Completed Phases 0–2 are preserved. New IDs T016–T061 replace the previous unfinished
+  Phase 3+ list; use these descriptions rather than older ID references.
+- T016 approval/alignment is complete. T017 defines foundational
+  checks; T018–T020 establish schema/migrations. T021–T030 implement the approved core.
+  Owner validation uses T031; T032 seed and T033–T036 mobile infrastructure finish Phase 3.
+- Phase 4 requires Phase 3 and the approved Phase 2 UI. T037/T038 tests precede
+  T039–T043 implementation and T044 owner acceptance.
+- Phase 5 requires sign-in; Phase 6 requires sign-in and is completed before final
+  persistent-login acceptance. Shared auth context/client files are edited sequentially.
+- Phase 7 follows all stories. T059 final acceptance precedes completion/status claims.
 
-- **Phase 0 (Prerequisites)**: no dependencies — do this first, once only
-- **Phase 1 (Monorepo Setup)**: depends on Phase 0
-- **Phase 2 (UI Design)**: depends on Phase 1 — can start before Phase 3
-- **Phase 3 (Backend)**: depends on Phase 1 — can run in parallel with Phase 2
-- **Phase 4 (US1 — Sign in)**: depends on Phase 2 AND Phase 3
-- **Phase 5 (US2 — Sign out)**: depends on Phase 4 (needs a session to revoke)
-- **Phase 6 (US3 — Session expiry)**: depends on Phase 4
-- **Phase 7 (Polish)**: after all user stories are accepted
+### Parallel opportunities (after their prerequisites)
 
-### Within Phase 4 (US1)
-
-Tests (T033, T034) → schema (T035) → service (T036) → routes (T037, T038) →
-wire UI (T039, T040, T041, T042) → resilience (T043) → device pass (T044).
-
-### Parallel Opportunities
-
-- T003, T004, T005, T006 (Phase 1) create separate packages or files
-- T009-UI, T010-UI (Phase 2) are independent component files
-- T018, T019, T021, T024, T025, T026 (Phase 3) are independent files
-- T031 (API client) and T032 (auth context) are independent
-- T033 and T034 (test files) are independent
-- T056, T057, T059 (Phase 7 docs) are separate documents
-
----
+- T023–T025 affect independent files after T016 decisions and environment/schema setup.
+- T037/T038 test files can be authored independently after the test harness exists.
+- T054–T056 documentation can be drafted independently after security behavior is settled.
+- No parallel edits to auth context, controllers/routes, schema/migrations, or LoginForm.
 
 ## Implementation Strategy
 
-### Recommended path
+Complete the security foundation, then sign-in, sign-out, session recovery, and final
+acceptance. The MVP is customer sign-in plus validated persistent-session recovery;
+registration and other academy workflows stay out of scope. Audit infrastructure supports
+later administrative mutations without adding those endpoints now.
 
-```
-Phase 0  → confirm environment is ready
-Phase 1  → monorepo boots
-Phase 2  → login UI visible on device, reviewed against designs
-Phase 3  → backend services, schema migrated, seeded
-Phase 4  → end-to-end sign-in works (MVP checkpoint)
-Phase 5  → sign-out
-Phase 6  → session expiry
-Phase 7  → docs, ADR, graph rebuild
-```
-
-### Why UI before backend?
-
-The design can be reviewed and iterated on a device without a database.
-Catching a layout or copy issue in Phase 2 is cheaper than catching it after
-the API is wired. Phase 2 is also the right point to compare the running app
-against `docs/design/mobile/high-fidelity/`.
-
-## Notes
-
-- File conflicts: `auth.service.ts` only in Phase 4 (US1); `auth.controller.ts` and
-  `auth.routes.ts` in Phases 4 and 5; `auth-context.tsx` in Phases 5 and 6;
-  `LoginForm.tsx` in Phase 2 and updated in Phase 4. Those tasks are sequential,
-  never parallel.
-- Never log passwords, tokens, or full request bodies.
-- Do not import `expo-secure-store` from `packages/shared` or any web-targeted code.
-- Per the project Execution Boundary: the agent writes files and gives you the exact
-  commands to run; you run them and report the output.
+For every command or manual acceptance step, the owner runs it and reports the result;
+the agent stops at that checkpoint. Never run installers, package managers, setup scripts,
+or test suites on the owner's behalf. Do not change `specifications.md` or other feature
+specifications without explicit approval. All UI edits must first inspect and strictly
+follow `docs/design/mobile/high-fidelity/` and `docs/design/mobile/sticker-sheet/`, using
+`docs/design/mobile/sticker-sheet/oak-sports-academy-logo.png` as the official crest.
