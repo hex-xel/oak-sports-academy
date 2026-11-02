@@ -9,6 +9,11 @@ Rules:
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 - A committed graphify-out/graph.json is rewritten whole on every build, so a large diff to it in a pull request is expected. Do not flag it as churn or suggest skipping the graph rebuild or its hooks.
 
+## Design Reference (MANDATORY)
+- Always inspect and strictly follow the high-fidelity mockups (`docs/design/mobile/high-fidelity/`, `docs/design/web/high-fidelity/`) and sticker sheets (`docs/design/mobile/sticker-sheet/`, `docs/design/web/sticker-sheet/`).
+- Use the official logo at `docs/design/mobile/sticker-sheet/oak-sports-academy-logo.png` (`apps/mobile/assets/images/logo.png`).
+- Never invent arbitrary layouts or placeholder icons when official designs exist.
+
 <!-- icm:start -->
 ## Persistent memory (ICM) — MANDATORY
 

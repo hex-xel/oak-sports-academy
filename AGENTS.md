@@ -37,6 +37,22 @@ Any AI coding agent working on this project must:
 8. Never modify specifications without user approval.
 9. Validate changes after implementation.
 10. Report what changed and whether validation passed.
+11. Always inspect and strictly follow the high-fidelity mockups and sticker sheets in `docs/design/` when implementing or modifying any user interface (mobile or web).
+
+## Design System and UI Assets (MANDATORY)
+
+All user interfaces must strictly adhere to the approved design specifications in `docs/design/`:
+
+1. **Design Reference Locations**:
+   - **Mobile High-Fidelity**: `docs/design/mobile/high-fidelity/` (e.g. `login.png` detailing every screen state, input validation alert, focus outline, and spacing).
+   - **Mobile Sticker Sheet**: `docs/design/mobile/sticker-sheet/` (`sticker-sheet.png` defining typography, color palette, buttons, badges, border radii, and shadows).
+   - **Web High-Fidelity**: `docs/design/web/high-fidelity/`.
+   - **Web Sticker Sheet**: `docs/design/web/sticker-sheet/`.
+   - **Official Academy Crest Logo**: `docs/design/mobile/sticker-sheet/oak-sports-academy-logo.png` (copied to `apps/mobile/assets/images/logo.png`).
+2. **Implementation Rules**:
+   - Agents must never use generic placeholder icons or invent ad-hoc colors/layouts when official high-fidelity mockups and sticker sheets exist in `docs/design/`.
+   - Before writing or editing any UI component or screen, read and inspect the corresponding image in `docs/design/` using visual inspection tools to extract exact colors, typography hierarchy, margins, and component alignments.
+   - All branding must use the official shield crest logo rather than arbitrary icon replacements.
 
 ## Code Comments and Documentation
 

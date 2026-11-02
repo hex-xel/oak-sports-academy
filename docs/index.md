@@ -40,6 +40,7 @@ site visitors.
 | `packages/shared/` | Shared TypeScript types and utilities |
 | `prototype/schedule-selection/` | Scheduling algorithm prototype and benchmarks |
 | `docs/` | This vault: architecture, decisions, milestone material |
+| `docs/design/` | Design system: high-fidelity mockups, sticker sheets, official logo |
 | `specs/` | Per-feature spec, plan, tasks — see `specs/001-user-login/` |
 | `specifications.md` | Approved project requirements — the source of truth |
 | `scripts/` | Development and validation scripts |
@@ -72,12 +73,13 @@ section whenever the status changes.
   first grep or file read, and use `graphify path` / `graphify explain` for structure.
 - Do not modify `specifications.md` without explicit approval.
 - If a spec-kit `tasks.md` exists for the current feature, work from it in order.
+- For all UI implementations (mobile or web), always inspect and strictly match the high-fidelity mockups and sticker sheets in `docs/design/`.
 - Store durable decisions back to ICM with `icm.exe store -t decisions-oak-sports-academy`.
 
 ## Next up
 
-- Phase 0 and Phase 1 (monorepo & package configurations, T001–T007) are complete and verified.
-- **Phase 2 (Login UI, T008-UI–T015-UI)**: Implement `TextField`, `PrimaryButton`, `LoginForm`, and login screen referencing the design assets in `docs/design/mobile/`.
+- **Phase 2 (Login UI, T008-UI–T015-UI)** is complete and approved against high-fidelity designs.
+- Proceed to **Phase 3: Foundational Backend** (Prisma schema, database migration, Argon2id, session service, rate limiter, and security middleware, T016–T032).
 - Milestone 1 supporting material in `docs/milestone-1/`.
 
-_Last updated: 2026-11-01_
+_Last updated: 2026-11-02_

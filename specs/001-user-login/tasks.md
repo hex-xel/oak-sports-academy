@@ -120,37 +120,37 @@ backend is involved.
 > **Why UI first**: Design can be reviewed on a device/emulator immediately. API
 > integration (Phase 4) is added after the screens are approved.
 
-- [ ] T008-UI [P] Review high-fidelity designs in `docs/design/mobile/high-fidelity/`
+- [x] T008-UI [P] Review high-fidelity designs in `docs/design/mobile/high-fidelity/`
   and note the exact colours, typography, spacing, and copy for the login screen and
   home screen before writing any component code.
 
-- [ ] T009-UI [P] Create the `TextField` primitive with label, value, onChangeText,
+- [x] T009-UI [P] Create the `TextField` primitive with label, value, onChangeText,
   error string, secureTextEntry, and accessibilityLabel props in
   `apps/mobile/components/TextField.tsx`.
   - Show an inline error message below the field when `error` is set.
   - Match the design spec from `docs/design/mobile/sticker-sheet/`.
 
-- [ ] T010-UI [P] Create the `PrimaryButton` primitive with label, onPress, loading
+- [x] T010-UI [P] Create the `PrimaryButton` primitive with label, onPress, loading
   (shows a spinner and disables the button), and disabled states in
   `apps/mobile/components/PrimaryButton.tsx`.
   - Match the design spec from `docs/design/mobile/sticker-sheet/`.
 
-- [ ] T011-UI Create the login route with keyboard avoidance and scroll handling in
+- [x] T011-UI Create the login route with keyboard avoidance and scroll handling in
   `apps/mobile/app/login.tsx`. Use a static mock `onSubmit` for now (console.log).
 
-- [ ] T012-UI Build `LoginForm` using `TextField` and `PrimaryButton`: labelled email
+- [x] T012-UI Build `LoginForm` using `TextField` and `PrimaryButton`: labelled email
   and password inputs, inline validation (empty check only for now), disabled-while-
   submitting state, and 360 dp minimum width layout in
   `apps/mobile/features/auth/LoginForm.tsx`.
 
-- [ ] T013-UI Create the protected home screen (placeholder) showing a hard-coded
+- [x] T013-UI Create the protected home screen (placeholder) showing a hard-coded
   "Signed in" message and a "Sign out" button stub in `apps/mobile/app/index.tsx`.
 
-- [ ] T014-UI Create the root layout with a route guard that redirects unauthenticated
+- [x] T014-UI Create the root layout with a route guard that redirects unauthenticated
   users to `/login` (use a simple boolean flag for now, not a real auth context) in
   `apps/mobile/app/_layout.tsx`.
 
-- [ ] T015-UI Manual design review: run the app on the device or emulator, navigate to
+- [x] T015-UI Manual design review: run the app on the device or emulator, navigate to
   the login screen, compare every element against the high-fidelity mockup in
   `docs/design/mobile/high-fidelity/`. Fix any visual gap before continuing.
 

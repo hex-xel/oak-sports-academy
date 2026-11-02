@@ -7,11 +7,7 @@
     "scheme": "oaksports",
     "platforms": ["android"],
     "android": {
-      "package": "com.oaksports.academy",
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
+      "package": "com.oaksports.academy"
     },
     "extra": {
       /* EXPO_PUBLIC_API_URL is set in .env at runtime.
