@@ -198,25 +198,34 @@ Carry forward their security boundaries without implementing their business work
   truncate rather than reject. Attempts must support unknown emails without a user FK.
   Audit fields are those in §4, including actor, target, payloadHash, previousHash,
   currentHash, and UTC timestamp; do not conflate attempts with administrative audit logs.
-  Schema written 2026-11-02; owner Prisma validation pending. No migration/client generation run.
+  Schema written and owner Prisma validation passed 2026-11-02. No migration/client generation run.
 
-- [ ] T019 Create reviewed SQL migrations in `apps/api/prisma/migrations/` for the
+- [x] T019 Create reviewed SQL migrations in `apps/api/prisma/migrations/` for the
   schema, RLS on sensitive auth tables, and audit INSERT/SELECT-only runtime privileges.
   Separate privileged migrations from the non-owner, non-BYPASSRLS runtime connection.
   Establish transaction-local identity from a verified session, never client claims;
   specify a narrowly scoped pre-auth lookup/session-bootstrap path that does not bypass
   tenant isolation for general queries. Fail closed on missing identity and avoid
   leaking context through pooled connections. Do not create future-feature tables.
+  Two ordered SQL migrations written and owner-applied 2026-11-02; metadata reviewed
+  at T020. Runtime behavior validation remains scheduled for T031. See `docs/architecture/auth-data.md` for the reviewed function/grant boundary.
 
-- [ ] T020 Owner applies the reviewed development migration and generates the client
+- [x] T020 Owner applies the reviewed development migration and generates the client
   from `C:\Dev\School\oak-sports-academy\apps\api`:
   ```powershell
-  npx prisma migrate dev --name init_auth
-  npx prisma generate
+  ..\..\node_modules\.bin\prisma.cmd migrate deploy --schema prisma/schema.prisma
+  ..\..\node_modules\.bin\prisma.cmd generate --schema prisma/schema.prisma
   ```
   Expected: migration succeeds and `users`, `sessions`, `sign_in_attempts`, plus the
-  approved audit table exist with the reviewed policies/grants. On failure, stop and
+  approved audit table exist with the reviewed policies/grants. Run the read-only
+  `scripts/inspect-auth-security.sql` inspection as documented in `README.md`. Apply
+  the authored migrations; do not generate a replacement/shadow migration. On failure, stop and
   share redacted output; do not reset a shared database or continue dependent tasks.
+
+  Owner confirmed both migrations applied and Prisma Client generated. Reviewed role
+  attributes/memberships, four RLS-enabled postgres-owned tables, 13 policy definitions,
+  eight function owners/search paths, no PUBLIC/API execution grants, no runtime audit
+  UPDATE/DELETE/TRUNCATE privileges, and enabled audit trigger. Runtime tests await T031.
 
 - [ ] T021 Create `apps/api/src/config/env.ts` and update `apps/api/.env.example` with
   Zod-validated runtime/migration URLs, PORT, NODE_ENV, and SESSION_TTL_HOURS (8).

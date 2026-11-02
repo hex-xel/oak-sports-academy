@@ -50,8 +50,9 @@ site visitors.
 Phase 3 of `specs/001-user-login/` is in progress. The mobile login UI is complete
 and approved. T016 aligned the feature artifacts; T017 security tests are written but
 cannot collect until their backend modules and T031 harness exist. T018 adds the Prisma
-auth/audit schema; owner validation is pending. No auth database migration has been
-applied by the agent. Client order remains customer mobile first, staff/admin web later
+auth/audit schema; owner Prisma validation passed. T019 SQL migrations are written
+and owner-applied; Prisma Client generation and T020 metadata review are complete.
+Runtime security tests remain pending T031. Client order remains customer mobile first, staff/admin web later
 this semester, and customer web next semester.
 
 See [[architecture/auth-data|Authentication data layer]] for schema boundaries and
@@ -81,7 +82,7 @@ See [[architecture/auth-data|Authentication data layer]] for schema boundaries a
 ## Next up
 
 - **Phase 2 (Login UI, T008-UI–T015-UI)** is complete and approved against high-fidelity designs.
-- Validate **T018 (Prisma schema)** with the owner, then proceed to **T019 (SQL migrations, RLS, and grants)**. Remaining foundational tasks continue through T036.
+- **T020 complete.** Next is **T021 (validated environment configuration and runtime-role connection setup)**. Runtime security tests remain scheduled for T031.
 - Milestone 1 supporting material in `docs/milestone-1/`.
 
 _Last updated: 2026-11-02_

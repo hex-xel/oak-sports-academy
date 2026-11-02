@@ -133,3 +133,43 @@ variable is absent, provide the existing development connection settings private
 before retrying. If the executable is missing or validation fails, stop and share
 redacted output; do not install/upgrade packages or apply migrations to work around it.
 Wait for review before T019. Runtime role/grant changes are handled by T019/T021.
+
+## T019 migrations and T020 owner application
+
+T018 schema validation passed. T019 adds the baseline and security migrations; no SQL
+has been applied by the agent. See [the data-layer boundary](docs/architecture/auth-data.md)
+for function interfaces, restricted roles, and trusted-backend limitations.
+
+1. Confirm `.env` DIRECT_URL identifies the intended **development** database, with
+   no existing application tables that conflict with this initial migration. Use the
+   privileged migration principal only for this step. It needs permission to create
+   restricted roles, grant membership, and transfer function ownership. If managed
+   hosting denies those operations, stop and share the redacted error for review.
+   Never substitute the migration principal as the eventual API runtime role.
+2. From `C:\Dev\School\oak-sports-academy\apps\api`, apply the committed migrations:
+   ```powershell
+   ..\..\node_modules\.bin\prisma.cmd migrate deploy --schema prisma/schema.prisma
+   ..\..\node_modules\.bin\prisma.cmd generate --schema prisma/schema.prisma
+   ```
+   Run the second command only if the first succeeds. Expected: both initial migrations
+   apply successfully, followed by successful Prisma Client generation. `migrate deploy`
+   applies the authored SQL without generating a replacement migration or shadow DB.
+3. In the Supabase SQL editor for that same development project, run the read-only
+   contents of [scripts/inspect-auth-security.sql](scripts/inspect-auth-security.sql).
+   Expected: two NOLOGIN Oak roles with all elevated flags false and no outbound role
+   memberships; four RLS-enabled tables owned by the migration principal; policy rows
+   scoped to Oak roles; eight SECURITY DEFINER functions owned by oak_auth_owner with
+   fixed search_path; no unexpected PUBLIC/API execution grants; all audit mutation
+   privilege checks false; enabled audit_insert_guard trigger. Database timezone should
+   be UTC. Share the non-secret inspection output and migration result.
+4. Stop on failure. Do not rerun a failing migration manually, edit applied migration
+   files, accept a database reset prompt, use `db push`, or mark failed migrations
+   resolved without review. PostgreSQL statements here are transactional, but Prisma
+   may retain a failed migration record; share that error before choosing recovery.
+
+The owner provisions a separate API login inheriting **only oak_runtime** at T021,
+then updates DATABASE_URL privately. Do not start the API with the current privileged
+example connection. No passwords or LOGIN role creation are committed. Keep migration
+credentials and the future privileged fixture credentials out of request handling.
+RLS/pooled-context/concurrency behavior still requires the T031 owner-run security tests;
+metadata inspection alone is not proof those behaviors pass.
