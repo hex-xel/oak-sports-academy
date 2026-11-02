@@ -93,7 +93,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       setEmailError("Email address is required.");
       hasValidationError = true;
     } else if (!isValidEmail(trimmedEmail)) {
-      setEmailError("Incorrect email address. Check it and try again.");
+      setEmailError("Please enter a valid email address (e.g., name@example.com).");
       hasValidationError = true;
     }
 
