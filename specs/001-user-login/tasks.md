@@ -227,37 +227,51 @@ Carry forward their security boundaries without implementing their business work
   eight function owners/search paths, no PUBLIC/API execution grants, no runtime audit
   UPDATE/DELETE/TRUNCATE privileges, and enabled audit trigger. Runtime tests await T031.
 
-- [ ] T021 Create `apps/api/src/config/env.ts` and update `apps/api/.env.example` with
+- [x] T021 Create `apps/api/src/config/env.ts` and update `apps/api/.env.example` with
   Zod-validated runtime/migration URLs, PORT, NODE_ENV, and SESSION_TTL_HOURS (8).
   Validate required values at startup without logging secrets. Document the runtime
   role and trusted proxy configuration; do not assume Supabase service credentials
   or a privileged connection provide RLS isolation.
+  Completed 2026-11-03: owner provisioned oak_api, validated environment settings,
+  passed TypeScript --noEmit, and passed the read-only runtime-role connection check.
+  Runtime uses the transaction pooler (6543); migration connection stays on 5432.
 
-- [ ] T022 Create `apps/api/src/lib/prisma.ts` with a Prisma singleton and the approved
+- [x] T022 Create `apps/api/src/lib/prisma.ts` with a Prisma singleton and the approved
   transaction-scoped database identity helper from T019; keep privileged lookup access
   confined to authentication bootstrap. Use parameterized queries only.
+  Completed 2026-11-03: owner TypeScript --noEmit and session-context rejection check
+  passed. Malformed/unknown sessions produce safe 401s, protected callbacks do not run,
+  and unscoped access stays closed. Positive-session isolation remains in T031.
 
-- [ ] T023 [P] Create safe API errors and Express handling in
+- [x] T023 [P] Create safe API errors and Express handling in
   `apps/api/src/middleware/error-handler.ts`: `{code, message, details?}`, field-only
   validation details, stable payload-too-large and internal-error handling, no stack,
   database details, credentials, or tokens in responses/logs.
+  Completed 2026-11-03: owner TypeScript --noEmit passed, all 21 focused middleware
+  tests passed, and the T022 session-context rejection regression check passed.
 
-- [ ] T024 [P] Create global IP and sensitive endpoint rate limiters in
+- [x] T024 [P] Create global IP and sensitive endpoint rate limiters in
   `apps/api/src/middleware/rate-limit.ts`: global baseline 100 requests/15 minutes;
   login 10/15 minutes/IP and 5/15 minutes/normalized email, standardized `Retry-After`.
   Do not trust arbitrary forwarded headers. Bound in-memory key retention and document
   restart/per-instance limitations. Verification endpoints reuse this later.
+  Completed 2026-11-03: owner TypeScript --noEmit passed; all 8 rate-limit tests and
+  21 error-handler regression tests passed (29 total). Server wiring remains T030.
 
-- [ ] T025 [P] Create `apps/api/src/modules/auth/password.service.ts` with library
+- [x] T025 [P] Create `apps/api/src/modules/auth/password.service.ts` with library
   Argon2id hash/verify: 19 MiB (19456 KiB), iterations 2, parallelism 1, automatic salt,
   and a reusable dummy hash verification for unknown accounts. Owner benchmarks on the
   deployment host before tuning; never implement cryptography manually.
+  Completed 2026-11-03: owner TypeScript --noEmit and all 11 focused password tests
+  passed. Host performance measurement remains a pre-deployment/tuning checkpoint.
 
-- [ ] T026 Create `apps/api/src/modules/auth/session.service.ts`: crypto-generated
+- [x] T026 Create `apps/api/src/modules/auth/session.service.ts`: crypto-generated
   256-bit opaque token, SHA-256 hash stored server-side, 8-hour absolute expiry,
   create/verify/current-session revoke and revoke-all helper for future security events.
   Check current account restrictions on protected requests; never return DB session
   records or raw tokens beyond successful login. Other device sessions survive logout.
+  Completed 2026-11-03: owner TypeScript --noEmit, all 12 orchestration tests, and
+  unknown-session DB rejection/idempotent logout check passed. Positive sessions await T031.
 
 - [ ] T027 Create `apps/api/src/modules/audit/audit.service.ts` with append and verify
   operations using Node crypto SHA-256, the exact §4 field order, canonical payload

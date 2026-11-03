@@ -82,7 +82,7 @@ See [[architecture/auth-data|Authentication data layer]] for schema boundaries a
 ## Next up
 
 - **Phase 2 (Login UI, T008-UI–T015-UI)** is complete and approved against high-fidelity designs.
-- **T020 complete.** Next is **T021 (validated environment configuration and runtime-role connection setup)**. Runtime security tests remain scheduled for T031.
+- **T026 complete and owner-validated (12 unit tests and unknown-session DB check passed).** Next: **T027 (audit append and verification service)**. Full runtime security tests remain scheduled for T031.
 - Milestone 1 supporting material in `docs/milestone-1/`.
 
 _Last updated: 2026-11-02_

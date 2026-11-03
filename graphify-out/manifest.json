@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1793612507.6062095,
-    "seen": 1793612553.2341423,
-    "ast_hash": "bae3d6dc64dfc5a81952438c2d273e47",
+    "mtime": 1793715744.740903,
+    "seen": 1793715781.0854747,
+    "ast_hash": "dca14efdf9f013002c01021291042033",
     "semantic_hash": ""
   },
   "apps/mobile/.expo/README.md": {
@@ -120,9 +120,9 @@
     "semantic_hash": ""
   },
   "docs/index.md": {
-    "mtime": 1793621054.8459277,
-    "seen": 1793621138.6978664,
-    "ast_hash": "4186ef7d4effee16df11f6d4df0be0c7",
+    "mtime": 1793715744.7395568,
+    "seen": 1793715781.0854838,
+    "ast_hash": "1c5b4d8385b2af13afd9477d231c2121",
     "semantic_hash": ""
   },
   "specifications.md": {
@@ -168,9 +168,9 @@
     "semantic_hash": ""
   },
   "specs/001-user-login/tasks.md": {
-    "mtime": 1793621054.8448932,
-    "seen": 1793621138.697879,
-    "ast_hash": "4c76811b2eea1f50f2f86e4297b21706",
+    "mtime": 1793715744.738554,
+    "seen": 1793715781.0854964,
+    "ast_hash": "b4458975c362fe0c39d76ce8c337f9fc",
     "semantic_hash": ""
   },
   "specs/README.md": {
@@ -222,9 +222,9 @@
     "semantic_hash": ""
   },
   "apps/api/tests/security/rate-limit.test.ts": {
-    "mtime": 1793610442.182815,
-    "seen": 1793610565.1000648,
-    "ast_hash": "fb8e0030f7545e1563fa9a0d401e8175",
+    "mtime": 1793714784.73036,
+    "seen": 1793714856.4806213,
+    "ast_hash": "be177914b22d19315905aadc4ae2bec5",
     "semantic_hash": ""
   },
   "apps/api/tests/security/rls.test.ts": {
@@ -240,15 +240,15 @@
     "semantic_hash": ""
   },
   "apps/api/tests/security/README.md": {
-    "mtime": 1793610540.6774,
-    "seen": 1793610565.1001256,
-    "ast_hash": "5de8844580ea59c73306f2e510bfaf3d",
+    "mtime": 1793714084.2143044,
+    "seen": 1793714091.9259,
+    "ast_hash": "4741e3c6aff9585d7b597eb2f0c08bb9",
     "semantic_hash": ""
   },
   "docs/architecture/auth-data.md": {
-    "mtime": 1793621054.8448932,
-    "seen": 1793621138.6978652,
-    "ast_hash": "de2dc52df6bddf59627524defa0594a6",
+    "mtime": 1793715744.7395568,
+    "seen": 1793715781.085482,
+    "ast_hash": "b321dbb302ada1c8d47425bf50ab98b4",
     "semantic_hash": ""
   },
   "apps/api/prisma/migrations/20261102090000_init_auth/migration.sql": {
@@ -753,6 +753,96 @@
     "mtime": 1793619880.3057945,
     "seen": 1793621138.6978571,
     "ast_hash": "38a53e95ded880782190ddf2f2810317",
+    "semantic_hash": ""
+  },
+  "apps/api/scripts/check-env.ts": {
+    "mtime": 1793712502.8210974,
+    "seen": 1793712625.7960033,
+    "ast_hash": "85bad5bb57babc8f7e185cd510c24a9f",
+    "semantic_hash": ""
+  },
+  "apps/api/scripts/check-runtime-db.ts": {
+    "mtime": 1793712502.8210974,
+    "seen": 1793712625.7960057,
+    "ast_hash": "3cbca9586c8537fa5e66ddc49feec9cc",
+    "semantic_hash": ""
+  },
+  "apps/api/src/config/env.ts": {
+    "mtime": 1793712617.76916,
+    "seen": 1793712625.7960074,
+    "ast_hash": "33e4244399e535fc1e632158d8f0c16c",
+    "semantic_hash": ""
+  },
+  "apps/api/scripts/check-session-context.ts": {
+    "mtime": 1793714023.7564633,
+    "seen": 1793714091.9255686,
+    "ast_hash": "94b008783cbacd5b6d06f6a73ae50378",
+    "semantic_hash": ""
+  },
+  "apps/api/src/lib/prisma.ts": {
+    "mtime": 1793714452.3487833,
+    "seen": 1793714519.5534134,
+    "ast_hash": "ed5187fe667377b19d8d4fbb5e8f9851",
+    "semantic_hash": ""
+  },
+  "apps/api/src/middleware/error-handler.ts": {
+    "mtime": 1793714452.3477807,
+    "seen": 1793714519.5534163,
+    "ast_hash": "834cc21011c1222fed8fc25d7402b30d",
+    "semantic_hash": ""
+  },
+  "apps/api/tests/middleware/error-handler.test.ts": {
+    "mtime": 1793714452.3497846,
+    "seen": 1793714519.553418,
+    "ast_hash": "88b7886fe79ac66a048b7f2b64e17685",
+    "semantic_hash": ""
+  },
+  "apps/api/src/middleware/rate-limit.ts": {
+    "mtime": 1793714784.7293565,
+    "seen": 1793714856.4806128,
+    "ast_hash": "374ebdfd11e96266a93cfe129832effd",
+    "semantic_hash": ""
+  },
+  "apps/api/scripts/benchmark-password.ts": {
+    "mtime": 1793715222.1760886,
+    "seen": 1793715230.1400783,
+    "ast_hash": "8280a8a66ec9d68224e6dff4fbce1155",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/auth/password.service.ts": {
+    "mtime": 1793715146.7313242,
+    "seen": 1793715230.1400952,
+    "ast_hash": "8b0d3c2f70f2ae9cc0af68288117ccf9",
+    "semantic_hash": ""
+  },
+  "apps/api/tests/auth/password-dummy.test.ts": {
+    "mtime": 1793715146.732761,
+    "seen": 1793715230.1400971,
+    "ast_hash": "52a5fdfdad0c422c379a5fda70c245dd",
+    "semantic_hash": ""
+  },
+  "apps/api/tests/auth/password.service.test.ts": {
+    "mtime": 1793715146.7313242,
+    "seen": 1793715230.1400983,
+    "ast_hash": "85b814f5f33c68bfaf463420dee24e04",
+    "semantic_hash": ""
+  },
+  "apps/api/scripts/check-session-service.ts": {
+    "mtime": 1793715526.9546824,
+    "seen": 1793715609.6437216,
+    "ast_hash": "e5a486d93fc609d24b99f7bd959a3308",
+    "semantic_hash": ""
+  },
+  "apps/api/src/modules/auth/session.service.ts": {
+    "mtime": 1793715601.3747787,
+    "seen": 1793715609.6437337,
+    "ast_hash": "606225cd822224ad8136c24ce8356dae",
+    "semantic_hash": ""
+  },
+  "apps/api/tests/auth/session.service.test.ts": {
+    "mtime": 1793715601.3848796,
+    "seen": 1793715609.6437392,
+    "ast_hash": "8f13556430b8696962cdc9524840f882",
     "semantic_hash": ""
   },
   "package-lock.json": {

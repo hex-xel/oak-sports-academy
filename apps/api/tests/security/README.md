@@ -55,7 +55,9 @@ I/O. Returned members are typed Prisma clients/functions, not mock adapters:
 - `asUser(userId, callback)` resolves one of the fixture's valid sessions to a verified
   identity and calls the production transaction-context helper on the runtime client.
   Do not use request-supplied identity, a privileged client, fake query results, or a
-  separate imitation of the RLS helper. Scope identity to the transaction only.
+  separate imitation of the RLS helper. Scope identity to the transaction only. Call
+  `withSession(sessionHash, async (tx) => callback(tx), runtime)` from the production
+  `src/lib/prisma.ts` helper; discard safe identity only when the test does not need it.
 - `close()` cleans only that dedicated test database and disconnects both clients.
   Runtime audit UPDATE/DELETE/TRUNCATE stay forbidden even during fixture cleanup.
 

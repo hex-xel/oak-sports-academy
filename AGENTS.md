@@ -54,6 +54,43 @@ All user interfaces must strictly adhere to the approved design specifications i
    - Before writing or editing any UI component or screen, read and inspect the corresponding image in `docs/design/` using visual inspection tools to extract exact colors, typography hierarchy, margins, and component alignments.
    - All branding must use the official shield crest logo rather than arbitrary icon replacements.
 
+### Essential UI States (MANDATORY)
+
+Treat UI states as part of UI/UX design and acceptance, not as implementation
+afterthoughts. Apply this to both mobile and web screens and reusable components.
+
+1. Before designing or editing a UI, visually inspect its high-fidelity mockups and
+   sticker sheets in `docs/design/`. Identify which states are already defined and
+   reuse them as the starting point. Improve incomplete states for clarity,
+   accessibility, feedback, and recovery while preserving the approved branding,
+   typography, spacing, colors, and component conventions. Do not create competing
+   versions of an existing state or silently override an approved design.
+2. Cover the states relevant to the actual feature:
+   - Components: default, focused, pressed, disabled, selected, and web hover where
+     applicable; form inputs also need empty, filled, invalid, and submitting states.
+   - Screens and data: initial loading, refreshing, success, empty/no results,
+     recoverable error, offline, timeout, and retry where the flow requires them.
+   - Protected flows: restoring a session, expired session, permission denied, and
+     account restrictions when applicable. Follow approved authentication rules;
+     a UI state never grants access that the backend denies.
+3. For each applicable state, define its trigger, visible feedback/copy, available
+   actions, and transition back to a usable state. Prevent duplicate submissions,
+   preserve safe input on recoverable failures, and show progress or retry guidance
+   instead of leaving users on an unexplained blank screen or indefinite spinner.
+4. Use persistent labels, visible keyboard focus, accessible state/error announcements,
+   and text or icons alongside color. Keep state changes usable with the mobile
+   keyboard, supported small screens, and assistive technology. Never expose raw
+   server errors, credentials, or sensitive data in feedback.
+5. Record applicable state coverage and any design gaps in the existing feature
+   review/checklist or task notes; explain when a state is not applicable rather than
+   adding unnecessary UI. Derive missing state visuals from approved design tokens.
+   If an improvement conflicts with a specification or approved design, present the
+   specific proposed change for owner approval before implementing that conflict.
+6. Include these states in owner-run manual UI review, not only the default screen.
+   Provide reproducible steps and expected results; keep implementation and design
+   references consistent when an approved improvement is made. Agents still do not
+   run test suites or environment setup under the Execution Boundary above.
+
 ## Code Comments and Documentation
 
 Write for the next reader: a teammate, or you in three months. English, matching the
