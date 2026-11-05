@@ -27,6 +27,11 @@ export interface PrimaryButtonProps {
   label: string;
   /** Action executed on press; ignored if loading or disabled */
   onPress: () => void;
+  /**
+   * Visual tone. `dark` is the approved login/sign-in fill; `forest` and `gold` are the
+   * registration "Continue" and "Submit Registration" fills from the sticker sheet.
+   */
+  variant?: "dark" | "forest" | "gold";
   /** Whether an asynchronous operation is in progress (shows spinner and locks interaction) */
   loading?: boolean;
   /** Disables click interaction and switches to muted disabled color tokens */
@@ -50,6 +55,7 @@ export interface PrimaryButtonProps {
 export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
   label,
   onPress,
+  variant = "dark",
   loading = false,
   disabled = false,
   accessibilityLabel,
@@ -59,12 +65,18 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
 }) => {
   // Interaction is blocked if either disabled or an async operation is actively pending
   const isInteractionDisabled = disabled || loading;
+  const tone =
+    variant === "gold"
+      ? { fill: Colors.buttonGold, label: Colors.buttonGoldText }
+      : variant === "forest"
+        ? { fill: Colors.buttonForest, label: Colors.textOnDark }
+        : { fill: Colors.buttonDark, label: Colors.textOnDark };
 
   return (
     <TouchableOpacity
       style={[
         styles.button,
-        isInteractionDisabled ? styles.buttonDisabled : styles.buttonActive,
+        isInteractionDisabled ? styles.buttonDisabled : [styles.buttonActive, { backgroundColor: tone.fill }],
         style,
       ]}
       onPress={onPress}
@@ -81,14 +93,14 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={disabled ? Colors.textMuted : Colors.textOnDark}
+          color={isInteractionDisabled ? Colors.textMuted : tone.label}
           accessibilityLabel="Loading, please wait"
         />
       ) : (
         <Text
           style={[
             styles.label,
-            isInteractionDisabled ? styles.labelDisabled : styles.labelActive,
+            isInteractionDisabled ? styles.labelDisabled : { color: tone.label },
             textStyle,
           ]}
         >
@@ -110,7 +122,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
   },
   buttonActive: {
-    backgroundColor: Colors.buttonDark,
     elevation: 2, // Subtle Android elevation shadow
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
@@ -125,9 +136,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     fontWeight: Typography.fontWeight.semibold,
     textAlign: "center",
-  },
-  labelActive: {
-    color: Colors.textOnDark,
   },
   labelDisabled: {
     color: Colors.buttonTextDisabled,

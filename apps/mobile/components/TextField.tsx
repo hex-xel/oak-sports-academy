@@ -37,6 +37,10 @@ export interface TextFieldProps extends Omit<TextInputProps, "secureTextEntry"> 
   accessibilityLabel?: string;
   /** Helper text displayed beneath the field when no error is present */
   helperText?: string;
+  /** Static text shown before the input inside the box, e.g. a "+63" dialling prefix */
+  prefix?: string;
+  /** Idle border colour; defaults to the shared neutral border token */
+  borderColor?: string;
   /** Prevents user editing when set to true */
   disabled?: boolean;
 }
@@ -55,6 +59,8 @@ export const TextField: React.FC<TextFieldProps> = ({
   isPassword = false,
   accessibilityLabel,
   helperText,
+  prefix,
+  borderColor,
   disabled = false,
   placeholder,
   autoCapitalize = "none",
@@ -78,11 +84,14 @@ export const TextField: React.FC<TextFieldProps> = ({
       <View
         style={[
           styles.inputWrapper,
+          borderColor ? { borderColor } : null,
           isFocused && styles.inputWrapperFocused,
           hasError && styles.inputWrapperError,
           disabled && styles.inputWrapperDisabled,
         ]}
       >
+        {/* Static prefix such as the "+63" dialling code; kept outside the editable text */}
+        {prefix ? <Text style={styles.prefixText}>{prefix}</Text> : null}
         <TextInput
           style={[styles.input, disabled && styles.inputDisabled]}
           value={value}
@@ -178,6 +187,11 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     color: Colors.textPrimary,
     paddingVertical: Spacing.sm,
+  },
+  prefixText: {
+    fontSize: Typography.fontSize.base,
+    color: Colors.textPrimary,
+    marginRight: Spacing.xs,
   },
   inputDisabled: {
     color: Colors.textMuted,

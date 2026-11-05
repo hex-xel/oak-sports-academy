@@ -34,6 +34,9 @@ export const Colors = {
 
   // Buttons
   buttonDark: "#0D1B2A",            // Active primary button fill
+  buttonForest: "#0B3D2E",          // Approved registration "Continue" fill
+  buttonGold: "#D4AF37",            // Approved "Submit Registration" fill
+  buttonGoldText: "#071A24",        // Label on gold actions (contrast 6.8:1)
   buttonDisabled: "#E5E7EB",        // Disabled button fill (gray-200)
   buttonTextDisabled: "#9CA3AF",    // Disabled button label color (gray-400)
 
@@ -88,4 +91,37 @@ export const BorderRadius = {
   button: 8,                        // Action buttons
   card: 16,                         // Bottom-sheet and content cards
   full: 9999,                       // Circular avatars and pills
+} as const;
+
+/**
+ * Registration-flow tokens.
+ *
+ * Sources: `docs/design/mobile/high-fidelity/registration.png` and the sticker sheet
+ * sections "Input Fields / Forms", "Buttons & Actions", "Progress" and
+ * "File Upload & Documents".
+ *
+ * Kept separate from `Colors` because approved login screens use their own green
+ * (#0B3026); the registration reference is a deeper #0B3D2E. Sharing one token would
+ * silently restyle the approved login UI.
+ */
+export const RegistrationColors = {
+  page: "#F5F6F4",                  // Screen background behind the white cards
+  card: "#FFFFFF",                  // Card and footer surface
+  fieldBorder: "#B9C1BD",           // Idle input border from the sticker sheet
+  divider: "#D9DEDC",               // Card outlines, footer rule, progress track
+  navy: "#071A24",                  // Headings, labels and primary text
+  forest: "#0B3D2E",                // Primary "Continue", checked boxes, success mark
+  gold: "#D4AF37",                  // Gold action fill and dashed upload outline
+  goldDeep: "#8A6D16",              // Outline-button border and filled progress
+  progressRemaining: "#74837B",     // Upcoming progress segments
+  error: "#A12828",                 // Error text and border from the sticker sheet
+  errorSurface: "#FDE7E7",          // Invalid field and upload fill
+  infoSurface: "#E8F3FA",           // Minor/guardian guidance banner
+  infoBorder: "#B7D4E4",
+  warningSurface: "#FCF4DF",        // Preview-only and non-blocking notices
+  warningBorder: "#E4C878",
+  warningText: "#6B5410",
+  successSurface: "#E6F4EC",        // Verified badges and the success ring backdrop
+  uploadFill: "#F5F6F4",            // Empty upload dropzone fill
+  scrim: "rgba(7, 26, 36, 0.55)",   // Modal backdrop
 } as const;
