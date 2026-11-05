@@ -1,1 +1,0 @@
-Native Word PDF export reviewed visually across all 20 pages. Required algorithms, Tasks 1-6, references and reconciliation appendix present. Original source unchanged. No slide appendix, application code changes, source specification edits, application test runs or measured performance claims.
