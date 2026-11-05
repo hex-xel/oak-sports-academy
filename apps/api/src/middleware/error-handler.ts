@@ -1,5 +1,7 @@
 import type { ErrorRequestHandler } from "express";
 import { ZodError } from "zod";
+import { VALIDATION_FIELDS, type ErrorCode, type ValidationField as SharedValidationField,
+  type ApiErrorResponse } from "@oak/shared";
 
 // Contract: specs/001-user-login/contracts/auth.openapi.yaml. Only reviewed static
 // copy is serialized; Error.message and Zod custom messages may contain input values.
@@ -15,14 +17,14 @@ const catalog = {
   RATE_LIMITED: { status: 429, message: "Too many attempts. Try again later." },
   UNAUTHENTICATED: { status: 401, message: "Unauthenticated" },
   INTERNAL_ERROR: { status: 500, message: "Something went wrong. Please try again." },
-} as const;
+} as const satisfies Record<ErrorCode, { status: number; message: string }>;
 
-/** Reviewed API rejection codes; shared contract types are introduced in T033. */
-export type ApiErrorCode = keyof typeof catalog;
+/** Backward-compatible API alias for the shared contract's reviewed codes. */
+export type ApiErrorCode = ErrorCode;
 
 /** Known login input names allowed in field-level feedback; never use arbitrary input keys. */
-export type ValidationField = "email" | "password";
-const validationFields = new Set<string>(["email", "password"]);
+export type ValidationField = SharedValidationField;
+const validationFields = new Set<string>(VALIDATION_FIELDS);
 
 /**
  * An intentional API rejection with reviewed copy and optional known validation fields.
@@ -97,8 +99,8 @@ function normalizeError(error: unknown): ApiError {
  * @returns Nothing; writes a response or delegates without writing a second response.
  * @throws No intentional errors; Express handles response transport failures.
  * @remarks Register after routes/body parsing in T030. Logs no errors, bodies, headers,
- * credentials, or SQL. Upstream Retry-After headers are preserved. T033 later centralizes
- * contract types. No runtime config or database client is imported by this module.
+ * credentials, or SQL. Upstream Retry-After headers are preserved. Shared contract types
+ * constrain the response. No runtime config or database client is imported by this module.
  */
 export const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, next): void => {
   if (res.headersSent) {
@@ -108,9 +110,10 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, _req, res, nex
     return;
   }
   const safe = normalizeError(error);
-  res.status(safe.status).json({
+  const body: ApiErrorResponse = {
     code: safe.code,
     message: safe.message,
     ...(safe.details ? { details: safe.details } : {}),
-  });
+  };
+  res.status(safe.status).json(body);
 };

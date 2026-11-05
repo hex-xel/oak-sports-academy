@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { appendAudit, verifyAuditChain } from "../../src/modules/audit/audit.service.js";
 import { createSecurityDatabase } from "../helpers/db.js";
 
-const fixture = createSecurityDatabase();
+const fixture = createSecurityDatabase({ concurrency: true });
 const genesis = "0".repeat(64);
 const sha256 = (value: string) => createHash("sha256").update(value, "utf8").digest("hex");
 const payload = { status: "ACTIVE" };
@@ -82,13 +82,17 @@ describe("SHA-256 append-only audit chain", () => {
 
   it("rolls back the business mutation and audit append together", async () => {
     await expect(fixture.asUser(fixture.alice.id, async (tx) => {
-      await tx.user.update({ where: { id: fixture.alice.id }, data: { displayName: "Rolled back" } });
-      await appendAudit(tx, { ...event(), userId: fixture.alice.id });
+      // Revoke a different owned session so this transaction's identity stays live.
+      const result = await tx.session.updateMany({ where: { id: fixture.aliceOtherSession.id },
+        data: { revokedAt: new Date() } });
+      expect(result.count).toBe(1);
+      await appendAudit(tx, { userId: fixture.alice.id, action: "SESSION_REVOKED",
+        targetEntity: "Session", targetId: fixture.aliceOtherSession.id, payload: { revoked: true } });
       throw new Error("deliberate rollback");
     })).rejects.toThrow("deliberate rollback");
     expect(await fixture.admin.auditLog.count()).toBe(0);
-    const alice = await fixture.admin.user.findUniqueOrThrow({ where: { id: fixture.alice.id } });
-    expect(alice.displayName).toBe(fixture.alice.displayName);
+    const session = await fixture.admin.session.findUniqueOrThrow({ where: { id: fixture.aliceOtherSession.id } });
+    expect(session.revokedAt).toBeNull();
   });
 
   it("grants no UPDATE, DELETE, or TRUNCATE audit privilege to the runtime role", async () => {

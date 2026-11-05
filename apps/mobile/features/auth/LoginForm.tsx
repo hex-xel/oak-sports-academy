@@ -24,6 +24,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { TextField } from "../../components/TextField";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { Colors, Typography, Spacing } from "../../constants/theme";
+import { validateLoginInput } from "./login-validation";
 
 export interface LoginFormProps {
   /**
@@ -43,15 +44,6 @@ export interface LoginFormProps {
   onForgotPasswordPress?: () => void;
   /** Callback triggered when user taps 'Register' */
   onRegisterPress?: () => void;
-}
-
-/**
- * Validates basic email formatting before sending to server.
- * Ensures the user entered an @ symbol and top-level domain without performing
- * excessive regex overhead on the mobile UI thread.
- */
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 }
 
 /**
@@ -81,50 +73,21 @@ export const LoginForm: React.FC<LoginFormProps> = ({
    * Emits user-friendly error copy matching the Figma high-fidelity mockups.
    */
   const handleLoginSubmit = () => {
-    let hasValidationError = false;
-
-    // Reset previous client errors
-    setEmailError("");
-    setPasswordError("");
-
-    const trimmedEmail = email.trim();
-
-    if (!trimmedEmail) {
-      setEmailError("Email address is required.");
-      hasValidationError = true;
-    } else if (!isValidEmail(trimmedEmail)) {
-      setEmailError("Please enter a valid email address (e.g., name@example.com).");
-      hasValidationError = true;
-    }
-
-    if (!password) {
-      setPasswordError("Password is required.");
-      hasValidationError = true;
-    } else if (password.length < 8) {
-      setPasswordError("Password must be at least 8 characters.");
-      hasValidationError = true;
-    }
-
-    if (hasValidationError) {
-      return;
-    }
+    if (isLoading) return;
+    const validation = validateLoginInput(email, password);
+    setEmailError(validation.errors.email ?? "");
+    setPasswordError(validation.errors.password ?? "");
+    if (!validation.credentials) return;
 
     if (onSubmit) {
       onSubmit({
-        email: trimmedEmail,
-        password,
+        ...validation.credentials,
         rememberMe,
       });
     } else {
-      // Phase 2 Default Mock Behavior: logs values for visual review
-      console.log("[LoginForm Mock Submit]", {
-        email: trimmedEmail,
-        passwordLength: password.length,
-        rememberMe,
-      });
       Alert.alert(
         "Phase 2 UI Preview",
-        `Form submitted successfully with mock email: ${trimmedEmail}`
+        "Form validation passed. Authentication wiring is not available yet."
       );
     }
   };

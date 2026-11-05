@@ -6,6 +6,11 @@ milestone: 1
 
 # T017 foundational security tests
 
+T031 harness is now written and awaits owner setup/execution under README T031.
+It accepts only the disposable local oak_auth_test database on127.0.0.1:55432,
+explicit opt-in and private marker; it cannot target Supabase. Source-only or focused
+mock tests still do not count as passed real database security tests.
+
 These are executable acceptance tests written before the implementation. They are not
 passing tests yet. Missing production modules and `tests/helpers/db.ts` are intentional
 until T019–T031. Do not replace them with local implementations, mock Prisma, or skip
@@ -16,8 +21,11 @@ suites to make a run green. No participant/enrollment production tables are intr
 These names are test-first integration seams, not already implemented exports. Keep
 behavior assertions if later implementation needs mechanical signature adjustments.
 
-- `packages/shared/src/permissions.ts`: `ROLE_PERMISSIONS` with CUSTOMER=15, STAFF=127,
-  ADMIN=4294967295. Production permission definitions come from specifications.md §6.
+- `packages/shared/src/permissions.ts`: target STUDENT baseline=15, ADMIN=4294967295;
+  STAFF is not a mapping key after legacy enum cleanup. Unsupported roles are rejected
+  at the identity boundary (see `tests/auth/session-role.test.ts`). T028 must
+  reconcile named capabilities with revised specifications.md §6; a mask never
+  authorizes Student personal/contact corrections or removes ownership checks.
 - `requirePermission(required, { audit })`: Express middleware reads server-populated
   `req.auth = { userId, permissions }`. Missing identity is 401; missing any required
   flag is 403 FORBIDDEN and emits an awaited redacted PERMISSION_DENIED audit event.
@@ -46,10 +54,13 @@ I/O. Returned members are typed Prisma clients/functions, not mock adapters:
   Never echo connection strings in errors. Fixture connection is privileged; runtime
   connection is non-owner/non-superuser/non-BYPASSRLS. Missing config fails explicitly.
 - `reset()` uses only privileged fixture access to clean that isolated database and
-  seed two verified ACTIVE customers (`alice`, `bob`), an ACTIVE ADMIN (`actor`), an
-  unrevoked session per customer, and at least one sign-in attempt. All data are
+  seed two verified ACTIVE Students (`alice`, `bob`), an ACTIVE ADMIN (`actor`), an
+  unrevoked session per Student, a separate second live Alice session, and at least one sign-in attempt. All data are
   synthetic; use example.test emails and generated UUIDs. Audit chain starts empty.
-  Expose `alice`/`bob` with id and displayName, `actor.id`, and `bobSession.id`.
+  Expose `alice`/`bob` with id and displayName, `actor.id`, `bobSession.id` and
+  `aliceOtherSession.id`. Alice's context session must differ from aliceOtherSession;
+  audit rollback revokes that second session without ending the transaction's identity.
+  All live sessions need future absolute and idle deadlines under the T064 schema.
 - `runtime` and `admin` are real PrismaClient instances for their respective roles.
   The audit fixture must not silently wrap runtime queries in privileged operations.
 - `asUser(userId, callback)` resolves one of the fixture's valid sessions to a verified

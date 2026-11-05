@@ -2,16 +2,15 @@ import { createHash } from "node:crypto";
 import { isIP } from "node:net";
 import type { Request } from "express";
 import { MemoryStore, rateLimit, type RateLimitRequestHandler } from "express-rate-limit";
-import { z } from "zod";
 import { ApiError } from "./error-handler.js";
+import { loginEmailSchema } from "../modules/auth/auth.schemas.js";
 
 const windowMs = 15 * 60 * 1000;
-const emailSchema = z.string().trim().toLowerCase().min(3).max(254).email();
 
 function normalizedEmail(req: Request): string | undefined {
   const body: unknown = req.body;
   if (typeof body !== "object" || body === null || Array.isArray(body) || !("email" in body)) return undefined;
-  const result = emailSchema.safeParse(body.email);
+  const result = loginEmailSchema.safeParse(body.email);
   return result.success ? result.data : undefined;
 }
 

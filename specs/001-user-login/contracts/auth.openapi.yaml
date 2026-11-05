@@ -1,9 +1,9 @@
 openapi: 3.1.0
 info:
   title: Oak Sports Academy — Authentication API (mobile login slice)
-  version: 0.2.0
+  version: 0.3.0
   description: |
-    Login, session lookup, and logout for the native Android customer app.
+    Login, session lookup, and logout for the native Android student app.
 
     **Transport**: the session token is returned in the login response body and sent as
     `Authorization: Bearer <token>`. No cookie is issued by this version. A browser client
@@ -141,7 +141,7 @@ components:
           format: email
           minLength: 3
           maxLength: 254
-          example: customer@example.com
+          example: student@example.com
         password:
           type: string
           minLength: 1
@@ -157,7 +157,7 @@ components:
         landingPath:
           type: string
           const: /
-          description: App route for the customer home screen.
+          description: App route for the student home screen.
         sessionToken:
           type: string
           description: |
@@ -194,7 +194,7 @@ components:
           type: [string, 'null']
         role:
           type: string
-          enum: [CUSTOMER, STAFF, ADMIN]
+          enum: [STUDENT, ADMIN]
         status:
           type: string
           enum: [ACTIVE, PENDING_APPROVAL, SUSPENDED]
@@ -224,6 +224,12 @@ components:
           type: object
           description: Field-level validation messages only; omitted otherwise.
 x-contract-rules:
+    - This is the target contract; STUDENT migration and idle enforcement await T063-T065.
+    - Native student login admits STUDENT only; Administrator browser transport is a separate feature. Legacy STAFF has no supported login path.
+    - Verified approved and enrolled students share landingPath / and student navigation; package entitlement checks remain independent.
+    - Sessions expire after 30 idle minutes or eight hours absolute, whichever occurs first; expiresAt denotes the absolute cap, not guaranteed remaining validity.
+    - Only successful authenticated user-initiated protected operations may renew idle expiry, never beyond expiresAt; restore lookup and background polling do not renew it.
+    - Idle-expired tokens receive the same 401 UNAUTHENTICATED as other expired tokens; exact-boundary checks are server-authoritative.
     - Unknown email and wrong password return identical 401 INVALID_CREDENTIALS with comparable verification work.
     - Account verification and approval errors follow correct password verification only.
     - Only verified ACTIVE accounts receive sessions; PENDING_APPROVAL returns 403 ACCOUNT_PENDING_APPROVAL.

@@ -14,6 +14,6 @@
       "@shared/*": ["../../packages/shared/src/*"]
     }
   },
-  "include": ["app/**/*", "components/**/*", "features/**/*", "lib/**/*"],
+  "include": ["app.config.ts", "app/**/*", "components/**/*", "features/**/*", "lib/**/*"],
   "exclude": ["node_modules"]
 }

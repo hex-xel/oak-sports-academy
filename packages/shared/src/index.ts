@@ -7,8 +7,13 @@
  * apps/api (Node) and apps/mobile (React Native), so it must remain
  * environment-agnostic.
  *
- * Auth types and error codes are added in Phase 3 (T028).
- * This stub exists so the workspace resolves @oak/shared during Phase 1.
+ * Shared authentication wire types exclude internal database/session material.
  */
 
 export const SHARED_VERSION = "0.0.1";
+
+export { PERMISSIONS, ROLE_PERMISSIONS, permissionsForRole, hasPermissions } from "./permissions.js";
+export type { AcademyRole } from "./permissions.js";
+export { ERROR_CODES, VALIDATION_FIELDS, isErrorCode } from "./error-codes.js";
+export type { ErrorCode, ValidationField, ApiErrorResponse } from "./error-codes.js";
+export type { AuthAccountStatus, UserSummary, LoginRequest, LoginResponse, SessionResponse, LogoutResponse } from "./auth-types.js";

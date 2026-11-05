@@ -26,6 +26,7 @@ const schema = z.object({
   PORT: positiveInteger.pipe(z.number().min(1).max(65535)).default("3000"),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   SESSION_TTL_HOURS: z.literal("8").default("8").transform(Number),
+  SESSION_IDLE_TIMEOUT_MINUTES: z.literal("30").default("30").transform(Number),
   TRUST_PROXY_IPS: z.string().default("").refine((value) =>
     value === "" || value.split(",").every((entry) => isIP(entry.trim()) !== 0)),
 }).superRefine((config, context) => {
@@ -46,6 +47,7 @@ export type RuntimeEnv = Readonly<{
   PORT: number;
   NODE_ENV: "development" | "test" | "production";
   SESSION_TTL_HOURS: number;
+  SESSION_IDLE_TIMEOUT_MINUTES: number;
   TRUST_PROXY: false | string[];
 }>;
 
@@ -68,6 +70,7 @@ export function parseEnv(source: NodeJS.ProcessEnv = process.env): RuntimeEnv {
     PORT: config.PORT,
     NODE_ENV: config.NODE_ENV,
     SESSION_TTL_HOURS: config.SESSION_TTL_HOURS,
+    SESSION_IDLE_TIMEOUT_MINUTES: config.SESSION_IDLE_TIMEOUT_MINUTES,
     TRUST_PROXY: config.TRUST_PROXY_IPS ? config.TRUST_PROXY_IPS.split(",").map((ip) => ip.trim()) : false,
   });
 }

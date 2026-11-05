@@ -7,6 +7,8 @@ build/
 .env
 .env.*
 !.env.example
+!.env.test.example
+!.env.seed.example
 
 # Python
 __pycache__/
@@ -32,3 +34,6 @@ docs/graph/
 /TOOLING.md
 
 /WORKFLOW.md
+
+# Owner-approved private audit artifacts
+/output/security-audit/

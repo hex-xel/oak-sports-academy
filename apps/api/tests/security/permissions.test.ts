@@ -10,8 +10,7 @@ const bob = "00000000-0000-4000-8000-000000000002";
 // Independent expectations from specifications.md §6, not the production mapping.
 const capabilities = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512];
 const roles = [
-  { role: "CUSTOMER", mask: 15 },
-  { role: "STAFF", mask: 127 },
+  { role: "STUDENT", mask: 15 },
   { role: "ADMIN", mask: 0xffffffff },
 ] as const;
 

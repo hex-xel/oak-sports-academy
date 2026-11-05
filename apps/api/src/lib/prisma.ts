@@ -34,6 +34,8 @@ function isSessionRejection(error: unknown): boolean {
  * @param work Awaited database-only callback receiving the scoped client and safe identity.
  * @param client Trusted runtime client, defaulting to the singleton. The T031 fixture may
  * inject its restricted test client; never supply a privileged fixture/migration client.
+ * @param activity Server route classification; background (default) never renews idle
+ * validity. Interactive renews only after successful database work in this transaction.
  * @returns The callback result, after its transaction commits successfully.
  * @throws SessionContextError for malformed, unknown, expired, revoked, or ineligible sessions.
  * @throws Database/transaction or callback errors unchanged for T023's safe handler.
@@ -47,6 +49,7 @@ export async function withSession<T>(
   tokenHash: string,
   work: (tx: Prisma.TransactionClient, identity: SessionIdentity) => Promise<T>,
   client: PrismaClient = prisma,
+  activity: "background" | "interactive" = "background",
 ): Promise<T> {
   if (typeof tokenHash !== "string" || !/^[0-9a-f]{64}$/.test(tokenHash)) {
     throw new SessionContextError();
@@ -64,10 +67,21 @@ export async function withSession<T>(
       throw error;
     }
     const identity = identities[0];
-    if (identities.length !== 1 || !identity || identity.status !== "ACTIVE") {
+    if (identities.length !== 1 || !identity || identity.status !== "ACTIVE" ||
+      (identity.role !== "STUDENT" && identity.role !== "ADMIN")) {
       throw new SessionContextError();
     }
-    return work(tx, identity);
+    const result = await work(tx, identity);
+    if (activity === "interactive") {
+      // Renewal and business work commit together; false rolls back both. Never accept
+      // client timestamps or call this for polling, restore checks or logout.
+      const renewed = await tx.$queryRaw<Array<{ renewed: boolean }>>`
+        SELECT public.oak_touch_session_activity() AS renewed`;
+      if (renewed.length !== 1 || renewed[0]?.renewed !== true) {
+        throw new SessionContextError();
+      }
+    }
+    return result;
   }, {
     isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted,
     maxWait: 5_000,

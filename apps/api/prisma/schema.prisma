@@ -13,8 +13,7 @@ datasource db {
 
 /// Server-assigned roles; permissions never come from client-submitted role names.
 enum Role {
-  CUSTOMER
-  STAFF
+  STUDENT
   ADMIN
 }
 
@@ -31,7 +30,7 @@ model User {
   email           String        @unique
   passwordHash    String
   displayName     String?
-  role            Role          @default(CUSTOMER)
+  role            Role          @default(STUDENT)
   status          AccountStatus @default(PENDING_APPROVAL)
   emailVerifiedAt DateTime?
   lastSignInAt    DateTime?
@@ -50,6 +49,8 @@ model Session {
   tokenHash  String    @unique @db.Char(64)
   userId     String    @db.Uuid
   expiresAt  DateTime
+  lastActivityAt DateTime @default(now())
+  idleExpiresAt DateTime
   revokedAt  DateTime?
   ipAddress  String?   @db.VarChar(45)
   userAgent  String?   @db.VarChar(255)

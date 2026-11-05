@@ -37,14 +37,41 @@ describe("runtime-role row-level security", () => {
     expect(row).toBeNull();
   });
 
-  it("cannot update another account even when application filters are omitted", async () => {
+  it("limits unqualified profile updates to the authenticated account", async () => {
     const result = await fixture.asUser(fixture.alice.id, (tx) =>
-      tx.user.updateMany({ data: { displayName: "Unauthorized change" } }));
-    expect(result.count).toBeLessThanOrEqual(1);
+      tx.user.updateMany({ data: { displayName: "Updated self" } }));
+    expect(result.count).toBe(1);
+    const alice = await fixture.admin.user.findUniqueOrThrow({ where: { id: fixture.alice.id } });
+    expect(alice.displayName).toBe("Updated self");
     const bob = await fixture.admin.user.findUniqueOrThrow({ where: { id: fixture.bob.id } });
     expect(bob.displayName).toBe(fixture.bob.displayName);
   });
 
+  it("permits self-profile changes without approval but rejects protected account changes", async () => {
+    await fixture.asUser(fixture.alice.id, (tx) => tx.user.update({
+      where: { id: fixture.alice.id }, data: { displayName: "Self correction" },
+    }));
+    const after = await fixture.admin.user.findUniqueOrThrow({ where: { id: fixture.alice.id } });
+    expect(after.displayName).toBe("Self correction");
+    await expect(fixture.asUser(fixture.alice.id, (tx) => tx.user.update({
+      where: { id: fixture.alice.id }, data: { role: "ADMIN" },
+    }))).rejects.toThrow();
+    await expect(fixture.asUser(fixture.alice.id, (tx) => tx.user.update({
+      where: { id: fixture.alice.id }, data: { status: "SUSPENDED" },
+    }))).rejects.toThrow();
+    const unchanged = await fixture.admin.user.findUniqueOrThrow({ where: { id: fixture.alice.id } });
+    expect(unchanged.role).toBe("STUDENT");
+    expect(unchanged.status).toBe("ACTIVE");
+  });
+
+  it("cannot change a different account's profile explicitly", async () => {
+    const result = await fixture.asUser(fixture.alice.id, (tx) => tx.user.updateMany({
+      where: { id: fixture.bob.id }, data: { displayName: "Forbidden cross-user edit" },
+    }));
+    expect(result.count).toBe(0);
+    const bob = await fixture.admin.user.findUniqueOrThrow({ where: { id: fixture.bob.id } });
+    expect(bob.displayName).toBe(fixture.bob.displayName);
+  });
   it("cannot read or revoke another account's sessions", async () => {
     const rows = await fixture.asUser(fixture.alice.id, (tx) => tx.session.findMany());
     expect(rows.length).toBeGreaterThan(0);

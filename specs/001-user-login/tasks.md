@@ -273,63 +273,239 @@ Carry forward their security boundaries without implementing their business work
   Completed 2026-11-03: owner TypeScript --noEmit, all 12 orchestration tests, and
   unknown-session DB rejection/idempotent logout check passed. Positive sessions await T031.
 
-- [ ] T027 Create `apps/api/src/modules/audit/audit.service.ts` with append and verify
+- [x] T027 Create `apps/api/src/modules/audit/audit.service.ts` with append and verify
   operations using Node crypto SHA-256, the exact §4 field order, canonical payload
   hashing, and genesis previousHash of 64 zeros. Serialize concurrent appends within
   the database transaction so the chain cannot fork; administrative mutations and their
   audit entry must commit atomically. Gate denials emit a redacted security audit event.
   No administrative CRUD endpoints are introduced in this login feature.
+  Owner TypeScript --noEmit and all 15 focused tests passed 2026-11-05.
+  Real locking/trigger/RLS/rollback coverage remains pending T031.
 
-- [ ] T028 Create centralized permissions in `packages/shared/src/permissions.ts` and
+### Revised requirements corrections (approved 2026-11-05)
+
+Preserve completed task history. Complete T027 owner validation, then T062–T066
+in the order below before T028. These corrections are pending, not evidence that
+the existing implementation already satisfies the revised requirements.
+
+Owner decisions: verified, assessment-approved students have the same student
+screens and navigation before and after enrollment. Registration status is separate
+from authentication status and paid-package entitlements. Unapproved accounts remain
+blocked. Migrate the business role CUSTOMER to STUDENT; Administrator remains distinct.
+Technical policy: 30-minute server-enforced idle expiry plus the existing eight-hour
+absolute cap. See [decision details](../../docs/architecture/login-requirements-alignment.md).
+
+- [x] T062 Reconcile `spec.md`, `plan.md`, `research.md`, `data-model.md`,
+  `contracts/auth.openapi.yaml`, `quickstart.md`, and `checklists/requirements.md`
+  in this feature with the approved access, STUDENT role and idle-expiry decisions.
+  Propose exact changes to `specifications.md` section 16 for explicit owner approval
+  before editing that source. Separate login eligibility from registration/payment
+  status; do not introduce account deletion while its safeguards remain unresolved.
+  Trace relevant source FR/NFR requirements, including response targets and platform
+  coverage; retain unresolved browser delivery scope as a documented dependency.
+  Completed 2026-11-05: feature artifacts reconciled; owner explicitly approved the
+  prepared master amendments, now applied to sections 4, 6, 7.2 and 16. Implementation
+  corrections and owner validation remain pending T063–T066/T031.
+
+- [x] T063 Update `apps/api/prisma/schema.prisma` and add a new forward migration in
+  `apps/api/prisma/migrations/` for CUSTOMER to STUDENT, preserving existing users and
+  relationships. Inventory legacy STAFF records before deciding their disposition;
+  never silently convert them to Administrator or grant them Student access. Update
+  current role references, fixtures and contracts; leave applied migrations unchanged.
+  Supply owner migration, Prisma generation and typecheck commands with expected results.
+  Implementation written 2026-11-05: enum rename and supported-role SQL checks in new
+  migration, runtime identity guard, updated fixtures and five focused role tests.
+  Owner inventory/deploy/generation/typecheck/tests are pending; see README T063.
+  Legacy STAFF rows are preserved and denied; no coach/disposition decision is made.
+  Owner validation passed: schema/deploy/generation/typecheck, 17 focused tests and
+  session rejection check. Owner inventory confirmed zero users/STAFF sessions and
+  STUDENT/STAFF/ADMIN enum. Follow-up removal of unused STAFF is written in
+  `20261105090100_remove_legacy_staff`; it rejects nonzero STAFF accounts and awaits
+  owner deploy/generation/regression checks before T063 is closed.
+  Completed 2026-11-05: owner also applied the follow-up, regenerated Client, passed
+  TypeScript, all 17 tests and rejection check; enum confirmed only STUDENT/ADMIN.
+
+- [x] T064 Add server-authoritative activity tracking to the Session schema, a new
+  forward migration, `apps/api/src/lib/prisma.ts`, and the session service as needed.
+  Reject sessions at either deadline; authenticated, successful user-initiated protected
+  operations may renew only the idle deadline, capped by absolute expiry. Background
+  polling, restore checks, failed requests and client-supplied timestamps must not extend
+  it. Define route classification for T029/T030; concurrent requests must not revive an
+  expired/revoked session. Update `apps/api/src/config/env.ts`, `.env.example`, README
+  and auth architecture documentation if configuration changes. Provide owner-run
+  focused tests; add positive idle/absolute boundary and isolation coverage to T031.
+  Written 2026-11-05: `20261105090200_session_idle_expiry`, activity fields, narrow
+  renewal function and explicit withSession activity classification; seven focused
+  orchestration tests and `scripts/check-session-idle.ts`. Owner validation pending.
+  T029/T030 must classify routes, leaving session restoration/background work nonrenewing.
+  T031 must verify exact idle/absolute boundaries, capped renewal, denied direct updates,
+  expired/revoked concurrent renewal, old-session backfill and transaction rollback.
+  Completed 2026-11-05: owner validated schema, applied migration, generated Client,
+  passed TypeScript, all 24 focused tests and env/context/idle scripts. Positive
+  database expiry/concurrency coverage remains pending T031; route wiring remains T029/T030.
+
+- [x] T065 Remove Student self-editing of personal/contact fields via a new forward
+  migration revoking the existing runtime displayName/updatedAt grant and self-profile
+  update policy. Update `apps/api/tests/security/rls.test.ts` and audit rollback fixtures
+  to reflect Administrator-only correction, without broadening runtime privileges.
+  Photo-upload permissions belong to their own feature; do not invent an upload route.
+  Written 2026-11-05: `20261105090300_admin_profile_corrections` revokes runtime
+  table/column UPDATE and drops users_self_profile. RLS tests require self/unfiltered
+  correction denial; audit rollback uses a second owned session in the T031 fixture
+  contract. Owner deploy/typecheck/metadata and regression checks pending README T065;
+  actual scoped denial/rollback tests remain blocked on T031's real fixture.
+  Completed 2026-11-05: owner schema/deploy/typecheck, all 39 focused regressions and
+  profile/context/idle scripts passed. Scoped denial and rollback remain T031 checks.
+
+- [x] T066 Reconcile downstream T028–T061 notes and
+  `specs/001-user-login/quickstart.md` with STUDENT/Administrator permissions, equal
+  approved-student navigation, payment-based entitlements and idle-session recovery.
+  Track full Home/navigation and email-link password reset as dependent features.
+  Inspect approved mockups/sticker sheets before UI edits; record existing Remember Me,
+  password-validation and OTP-reset design conflicts for resolution. Add owner manual
+  checks for expired sessions, unenrolled access and safe retry without token leakage.
+  Keep T031 database validation and T027 validation explicitly pending until reported.
+  Completed 2026-11-05: downstream notes and quickstart reconciled; visually inspected
+  login.png and sticker-sheet.png; gaps and manual state review recorded in
+  `checklists/ui-states.md`. T027 owner validation passed; T031 remains pending.
+  This document review does not approve conflicting visuals or certify UI acceptance.
+
+- [x] T028 Create centralized permissions in `packages/shared/src/permissions.ts` and
   `apps/api/src/middleware/require-permission.ts`, using the approved §6 constants and
-  role mapping. Require all requested bits with `(actual & required) === required`,
+  STUDENT/ADMIN mapping only. Review named bits against revised §6; legacy masks do
+  not authorize profile correction, approval or unpaid entitlements. Require all requested bits with `(actual & required) === required`,
   handle the unsigned ADMIN-all mask consistently, return `403 FORBIDDEN` on denial,
-  and audit it. Role membership alone never grants access to another customer's data.
+  and audit it. Role membership alone never grants access to another student's data.
+  Written 2026-11-05: shared named bits/role resolver/unsigned checks and an Express 4
+  gate with required awaited denial writer. Focused tests isolate permission behavior;
+  existing security/permissions.test.ts also requires T029 ownership middleware and is
+  not yet runnable. Owner typechecks and focused suite pending README T028. Real denial
+  audit transaction wiring remains T029/T030, with persistence/isolation checks T031.
+  Completed 2026-11-05: owner shared/API typechecks passed; all 62 focused tests passed
+  (26 permission, 21 safe-error, 15 audit). Identity/ownership and real audit wiring
+  remain T029/T030; actual database persistence remains T031.
 
-- [ ] T029 Create `apps/api/src/middleware/require-auth.ts` and
+- [x] T029 Create `apps/api/src/middleware/require-auth.ts` and
   `apps/api/src/middleware/require-ownership.ts`: identical `401 UNAUTHENTICATED` for
   missing/expired/revoked/unknown tokens, server-loaded permissions, permission gate
   followed by resource ownership checks and scoped DB access. In this slice enforce
-  self-access for `/auth/session`; linked minors/program scopes await their models.
+  self-access for `/auth/session`; no separate guardian/STAFF login or linked-child scope.
+  Include idle-expired tokens in identical 401 handling. Preserve transaction scope
+  through protected work; classify interactive success server-side for T064 renewal,
+  leaving restore/background checks nonrenewing and sending responses only after commit.
+  Written 2026-11-05: requireAuth terminal JSON route wrapper parses/hashes one Bearer
+  header, runs server permissions then scoped ownership/work, responds only after commit,
+  and commits buffered permission/ownership denial audit in a fresh background scope.
+  requireOwnership supports standalone gate tests. Focused auth tests and existing
+  permission/ownership matrix await owner checks in README T029. Real DB persistence,
+  expiry/concurrency and pooling remain T031; actual endpoint registration remains T030/T041.
+  Completed 2026-11-05: owner reports both typechecks, all requested tests and session
+  rejection check passed. Real database transaction guarantees remain pending T031.
 
-- [ ] T030 Wire Helmet (including an explicit API-appropriate CSP), the global limiter,
+- [x] T067 Apply owner override (2026-11-05) allowing Student personal/contact edits
+  without Administrator approval. New `20261105090400_student_self_profile` restores
+  only current displayName/updatedAt column grants and self-ownership policy. Shared
+  SELF_PROFILE_EDIT aliases bit 2; no management privileges change. Updated RLS tests
+  and check-profile-permissions script; owner migration/regression checks pending.
+  This supersedes T065's restriction, preserving its applied migration/history.
+  Full profile fields/UI remain separate; role/status/credentials/progress/finances stay
+  protected. Finish this policy checkpoint before T030; actual scoped tests remain T031.
+  Completed: owner reports migration, typecheck, regressions and both scripts passed.
+
+- [x] T030 Wire Helmet (including an explicit API-appropriate CSP), the global limiter,
   10 kB JSON limit, `/api/v1` routing, and final error handling in `apps/api/src/app.ts`
   and `apps/api/src/server.ts`; bind development API to `0.0.0.0`. Validate bodies,
   route parameters, and query parameters on exposed routes using Zod, stripping
   unexpected properties per approved T016 alignment. Mobile bearer routes issue no cookies.
+  Wire background versus interactive route classification explicitly, never from client
+  headers. Warm the password dummy hash before listening. A successful HTTP response
+  must follow transaction commit; failed operations cannot renew idle activity.
+  Written 2026-11-05: createApp factory and server startup, explicit API CSP/Helmet,
+  proxy-before-limiter ordering, no-store, 10 KiB parser, versioned liveness/JSON fallback,
+  final safe errors, password warmup before listening and shutdown cleanup. Six focused
+  app-boundary tests await owner typecheck/suites/manual liveness under README T030.
+  No protected/auth routes added before T041; their validation, sensitive quotas and
+  explicit background/interactive classification remain required when registered.
+  Completed 2026-11-05: owner typecheck, all 35 tests, server startup on port 3000
+  and health 200/security-header check passed. Graphify updated successfully afterward.
 
-- [ ] T031 Configure Vitest/Supertest in `apps/api/vitest.config.ts` and
+- [x] T031 Configure Vitest/Supertest in `apps/api/vitest.config.ts` and
   `apps/api/tests/helpers/db.ts`: dedicated test DB, migration precondition, isolated
   runtime-role RLS fixtures and privileged fixture cleanup, deterministic clocks and
   limiter resets. Never truncate production/shared data; runtime audit permissions
   remain INSERT/SELECT-only. Owner runs `npm test -w apps/api` from the repository root
   after preparing `.env.test`; expected all implemented foundational tests pass.
   On failure stop, share redacted output, and fix before proceeding.
+  Include T063 role denial and T064 idle/absolute exact boundaries, capped renewal,
+  concurrency/backfill/rollback and T065 self-profile denial. Provide aliceOtherSession
+  distinct from Alice's context session per `apps/api/tests/security/README.md`.
+  Written 2026-11-05: serialized Vitest config never loads .env, real localhost-only
+  oak_auth_test fixture with opt-in/marker/migration/role/data guards and owned cleanup,
+  separate single-connection RLS versus eight-connection audit tests, and nine real SQL
+  session lifecycle tests. Owner Docker startup/migrations/provisioning and all tests
+  remain pending README T031. Written denial-audit wrapper persistence and controlled
+  lock-wait renewal races require owner execution before full security signoff.
+  Completed 2026-11-05: owner provisioned the disposable local database, applied all
+  seven migrations, passed source/test typechecks and all 182 tests across 15 files.
+  Includes real RLS (11), audit (7) and session lifecycle/concurrency (9) tests.
+  This validates the local fixture; deployment acceptance and the deferred audit remain separate.
 
-- [ ] T032 Create `apps/api/prisma/seed.ts` and seed configuration in
+- [x] T032 Create `apps/api/prisma/seed.ts` and seed configuration in
   `apps/api/package.json` for verified active, unverified, suspended, and approved
-  pending-approval denial scenarios. Read development passwords from ignored environment
+  pending-approval denial scenarios (PENDING_APPROVAL is not approved). Seed STUDENT;
+  verified approval is ACTIVE. Approved-unenrolled/enrolled access checks must use real
+  enrollment fixtures when that feature exists, without inventing package activation.
+  Read development passwords from ignored environment
   configuration, hash with Argon2id, refuse production, print no secrets. Owner runs
   `npx prisma db seed` from `apps/api`; expected fixture accounts exist. On failure
   stop and report redacted output; do not alter shared data manually.
+  Written 2026-11-05: seed CLI loads private .env/.env.seed, requires explicit development
+  confirmation/password, uses DIRECT_URL only for this owner-run seed, and creates four
+  reserved synthetic STUDENT identities atomically. Reruns preserve existing records;
+  collisions roll back without overwrites. Seven local DB seed tests/typechecks passed;
+  all 189 tests across 16 files and both typechecks passed under the owner's explicit
+  T032 test authorization. Supabase was not contacted. Owner development seed execution
+  remains pending; T032 stays open until that result is reported.
+  Completed 2026-11-05: owner Supabase development seed succeeded: 4 created,
+  0 already present. Prisma 6 seed-config deprecation warning was non-blocking.
 
-- [ ] T033 Create shared request/response types and error codes in
+- [x] T033 Create shared request/response types and error codes in
   `packages/shared/src/auth-types.ts`, `packages/shared/src/error-codes.ts`, and export
   through `packages/shared/src/index.ts`; follow the reconciled contract, including
   `FORBIDDEN`, safe validation/rate-limit errors, and token-free session responses.
+  Written 2026-11-05: pure shared wire types, frozen codes/known fields, exact code
+  guard and API catalog/response typing. Shared/API/test typechecks passed, including
+  compile-time token/hash/date/role checks. Full regression hit an unexpected worker
+  exit; task remains open until a clean rerun. No Supabase writes or UI changes.
+  Completed after clean rerun: isolated rate-limit suite passed, then all 199 tests
+  across 17 files passed with exit code 0. Shared/API/test typechecks passed. The first
+  worker exit was not reproduced; no tests were skipped or failure suppression added.
 
-- [ ] T034 [P] Create `apps/mobile/lib/token-store.ts`: SecureStore get/set/delete,
+- [x] T034 [P] Create `apps/mobile/lib/token-store.ts`: SecureStore get/set/delete,
   one key constant, handled storage failures, no AsyncStorage/log/crash-report fallback.
+  Completed: getSessionToken/setSessionToken/deleteSessionToken use one private key.
+  Native errors become static TokenStorageError without raw causes or telemetry;
+  failed reads are not missing entries and failed writes/deletes never report success.
+  iOS writes use unlocked/device-only accessibility; no biometrics or fallback added.
+  Mobile and API test typechecks passed; seven mocked-native tests passed under
+  explicit T034 authorization. Device persistence/recovery acceptance remains for
+  integrated auth flows; this helper does not establish a server-validated session.
 
-- [ ] T035 Create `apps/mobile/lib/api.ts`: configured LAN/API URL via Expo config and
+- [x] T035 Create `apps/mobile/lib/api.ts`: configured LAN/API URL via Expo config and
   development override, JSON headers, `X-Client-Platform: mobile` on login, bearer
   injection, typed errors, bounded timeout and explicit retry for cold starts. Preserve
   Retry-After; do not automatically replay login/logout or log sensitive request data.
+  Complete: public Expo config resolves the URL; release requires HTTPS, development
+  permits explicit LAN HTTP override. One 10-second attempt bounds fetch/body decoding;
+  static typed errors retain status/Retry-After without raw diagnostics. Eight tests pass.
 
-- [ ] T036 Create `apps/mobile/lib/auth-context.tsx` exposing user, status
+- [x] T036 Create `apps/mobile/lib/auth-context.tsx` exposing user, status
   (`restoring|signedOut|signedIn`), signIn/signOut, and session invalidation. Keep the
   startup guard in restoring until secure storage is read; restoration is completed
   in US3. Never treat client state or cached claims as API authorization.
+  Complete: safe runtime response projection, serialized secure writes/deletion and
+  coalesced local invalidation. Six lifecycle tests pass. Saved tokens keep restoring
+  until T050 server confirmation. Provider/guard wiring is T043; remote logout is T047.
 
 **Checkpoint**: Owner confirms migration, security tests, and seed results. Permission
 checks, runtime RLS, and audit-chain guarantees are exercised with the real database.
@@ -339,29 +515,53 @@ checks, runtime RLS, and audit-chain guarantees are exercised with the real data
 ## Phase 4: User Story 1 - Sign in on the app (Priority: P1) 🎯 MVP
 
 **Goal**: Wire the approved native UI to real customer authentication.
+Revised target: native STUDENT login only. Administrator browser transport is separate;
+approved and enrolled Students share `/` access while package entitlements stay separate.
 **Independent Test**: Verified eligible account signs in; failures remain safe and
 usable; force-close/reopen acceptance finishes with US3.
 
-- [ ] T037 [P] [US1] Write service tests in `apps/api/tests/auth/login.service.test.ts`
+- [x] T037 [P] [US1] Write service tests in `apps/api/tests/auth/login.service.test.ts`
   for valid login, normalized email, wrong/unknown credentials with dummy verification,
   unverified/suspended/pending status under the approved eligibility rule, attempt
   recording, session hash-only storage, and no sensitive response fields.
+  Reject non-STUDENT native login after credential verification; unsupported identities
+  must not fall back to Student. Test equal approved/enrolled entry without payment bypass.
+  Complete: 14 orchestration tests pass; six additional restricted local-DB tests prove
+  attempt persistence, hash-only sessions/lastSignInAt, rollback and a role-change race.
 
-- [ ] T038 [P] [US1] Write API tests in `apps/api/tests/auth/login.api.test.ts` for
+- [x] T038 [P] [US1] Write API tests in `apps/api/tests/auth/login.api.test.ts` for
   mobile-header enforcement, no Set-Cookie, 200 response contract, validation and unknown
   property stripping, identical credential errors, verification after password check,
   both sensitive limiter thresholds plus global limiting/Retry-After, 10 kB rejection,
   and safe internal errors. Owner confirms expected failures before implementation.
+  Test writing complete; explicit owner test authorization used to observe the red
+  phase before T039/T040. 23 HTTP tests execute: three existing-boundary checks pass,
+  20 return the expected 404 because production route/controller wiring is T041.
+  Tests remain active and unsuppressed. Endpoint acceptance is NOT complete; the full
+  run exits 1 until T041. Credential ordering/dummy verification are covered by T037.
 
-- [ ] T039 [US1] Create `apps/api/src/modules/auth/auth.schemas.ts`: JSON object body,
+- [x] T039 [US1] Create `apps/api/src/modules/auth/auth.schemas.ts`: JSON object body,
   email trimmed/lowercased (3–254 characters, single @ and dotted domain), password
   1–128 characters without trimming; validate client header and strip unexpected fields
   under T016 approval. Add matching client-side malformed-email/empty-field validation
   in `apps/mobile/features/auth/LoginForm.tsx` so invalid input sends no request.
+  Remove the scaffold's minimum-eight login rule: login accepts 1–128 without trimming;
+  registration/reset complexity is separate. Review UI conflicts in `checklists/ui-states.md`.
+  Complete: 17 server/mobile parity tests pass. Limiter uses the same email schema.
+  Inspected approved mockups/sticker sheet before edits; kept layout/crest/styles,
+  replaced minimum-eight validation, removed credential-bearing mock logs/alert and
+  added accessible inline error announcements. Device acceptance remains manual.
 
-- [ ] T040 [US1] Implement `apps/api/src/modules/auth/auth.service.ts`: lookup through
+- [x] T040 [US1] Implement `apps/api/src/modules/auth/auth.service.ts`: lookup through
   approved pre-auth path, real/dummy verification, account restrictions after credential
   verification, successful/failed attempt recording, lastSignInAt, session creation.
+  Require verified ACTIVE STUDENT for native login, independent of enrollment/payment.
+  Complete: narrow runtime SQL only; one real/dummy verify before eligibility. Successful
+  attempt/session/lastSignInAt commit together; failures are recorded after rollback.
+  Recheck role/credentials under the creation function's account lock; no privileged
+  fallback or entitlement writes. Source/test/shared/mobile typechecks pass. Focused
+  run: 58/58; final full run: 260 passed, 20 T038 expected failures, no unhandled errors.
+  Earlier rate-limit worker exit did not recur in isolated and final full runs.
 
 - [ ] T041 [US1] Implement controllers/routes in
   `apps/api/src/modules/auth/auth.controller.ts`, `apps/api/src/modules/auth/auth.routes.ts`,
@@ -374,11 +574,16 @@ usable; force-close/reopen acceptance finishes with US3.
   `apps/mobile/features/auth/useLogin.ts` and wire `LoginForm.tsx`: API call, successful
   SecureStore write before entering signedIn, disabled submit while pending, recoverable
   failure, Retry-After countdown, and explicit retry after cold-start timeout.
+  Use one generic credential error for wrong/unknown credentials; preserve safe email
+  input, prevent duplicate submits and review accessibility/state coverage in the UI checklist.
 
 - [ ] T043 [US1] Replace mock guard/home state in `apps/mobile/app/_layout.tsx` and
   `apps/mobile/app/index.tsx` using real auth context and approved account restrictions.
   Inspect the mobile high-fidelity mockups/sticker sheet before any UI edit, retain the
   official crest, 360 dp usability, keyboard avoidance, and accessible error announcements.
+  Keep equal approved/enrolled Student entry. Full Home content and mandated menu order
+  (Home, Training, Schedule, Notification, Profile) belong to a dependent Home feature;
+  do not claim its completion from a placeholder authenticated screen.
 
 - [ ] T044 [US1] Owner runs `npm test -w apps/api` from the repository root and the
   sign-in/failure/device checks in `specs/001-user-login/quickstart.md` §5 (start with
@@ -426,12 +631,15 @@ fabricated tokens cause one login redirect with a session-ended notice.
 - [ ] T049 [US3] Write `apps/api/tests/auth/session.api.test.ts` for identical missing,
   expired, revoked, and unknown-token 401s; current account restrictions, safe response
   fields, permission denials, and cross-user isolation. Owner confirms expected failures.
+  Include idle expiry, restore not renewing activity, and absolute expiry after foreground use.
 
 - [ ] T050 [US3] Complete startup restore in `apps/mobile/lib/auth-context.tsx`: read
   SecureStore, avoid login-screen flicker, validate `/auth/session` in the background,
   clear invalid sessions, and handle offline/cold-start retries. Do not invent cached
   user claims on a cold launch; show a restoring/offline state when identity is unknown.
   Optimistic local navigation never authorizes protected data requests.
+  Do not send heartbeat/renewal for restoration, background polling or merely foregrounding
+  the app. Keep the token on recoverable network failure; clear it on confirmed 401.
 
 - [ ] T051 [US3] Add one authenticated-request 401 invalidation handler in
   `apps/mobile/lib/api.ts` connected to `apps/mobile/lib/auth-context.tsx`; distinguish
@@ -441,6 +649,8 @@ fabricated tokens cause one login redirect with a session-ended notice.
   `apps/mobile/app/login.tsx` and add accessible session-ended copy in
   `apps/mobile/features/auth/messages.ts`; reject external/unrecognized destinations,
   never put tokens in navigation URLs, and inspect approved designs before UI changes.
+  Cover idle and absolute session-ended states with the same safe recovery; revalidate
+  destination permissions and never automatically replay a mutation after re-login.
 
 - [ ] T053 [US3] Owner runs `npm test -w apps/api` from the repository root and expiry,
   offline restore, concurrent-401, re-login route-return, and force-close/reopen checks
@@ -480,6 +690,8 @@ fabricated tokens cause one login redirect with a session-ended notice.
   acceptance scenarios in `specs/001-user-login/quickstart.md`; include Argon2id/login
   performance on the deployment host. Expected: suites/scenarios pass, no secret leakage,
   and targets met. Stop on failure; record limitations before demonstration/deployment.
+  Measure NFR 1 request/page targets separately from the human login journey under agreed
+  normal-network/workload conditions. Browser compatibility awaits its delivery-scope decision.
 
 - [ ] T060 Update `docs/index.md` status/next-up and link new architecture/decision
   notes; update `README.md` for the implemented public modules and owner-run commands.
@@ -499,6 +711,10 @@ fabricated tokens cause one login redirect with a session-ended notice.
 - T016 approval/alignment is complete. T017 defines foundational
   checks; T018–T020 establish schema/migrations. T021–T030 implement the approved core.
   Owner validation uses T031; T032 seed and T033–T036 mobile infrastructure finish Phase 3.
+- Revised order: T027 then T062–T066, then resume T028 onward. T027 and T062–T066
+  are complete at their documented validation boundaries; T031 positive DB guarantees
+  and owner device acceptance remain outstanding. Design conflicts block affected UI
+  edits only, not the remaining backend permission work.
 - Phase 4 requires Phase 3 and the approved Phase 2 UI. T037/T038 tests precede
   T039–T043 implementation and T044 owner acceptance.
 - Phase 5 requires sign-in; Phase 6 requires sign-in and is completed before final

@@ -130,7 +130,7 @@ export const TextField: React.FC<TextFieldProps> = ({
             color={Colors.error}
             style={styles.errorIcon}
           />
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={styles.errorText} accessibilityRole="alert" accessibilityLiveRegion="polite">{error}</Text>
         </View>
       ) : helperText ? (
         <Text style={styles.helperText}>{helperText}</Text>

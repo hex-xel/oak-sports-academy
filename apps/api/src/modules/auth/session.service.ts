@@ -41,7 +41,7 @@ function isEligibilityRejection(error: unknown): boolean {
 export async function createSession(
   userId: string,
   metadata: SessionMetadata = {},
-  client: PrismaClient = prisma,
+  client: Pick<PrismaClient, "$queryRaw"> = prisma,
 ): Promise<CreatedSession> {
   const sessionToken = randomBytes(32).toString("hex");
   const hash = tokenHash(sessionToken);

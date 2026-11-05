@@ -10,8 +10,7 @@ logging.
 
 ```prisma
 enum Role {
-  CUSTOMER
-  STAFF
+  STUDENT
   ADMIN
 }
 
@@ -26,7 +25,7 @@ model User {
   email           String        @unique
   passwordHash    String
   displayName     String?
-  role            Role          @default(CUSTOMER)
+  role            Role          @default(STUDENT)
   status          AccountStatus @default(PENDING_APPROVAL)
   emailVerifiedAt DateTime?
   lastSignInAt    DateTime?
@@ -44,6 +43,8 @@ model Session {
   tokenHash  String    @unique @db.Char(64)
   userId     String    @db.Uuid
   expiresAt  DateTime
+  lastActivityAt DateTime @default(now())
+  idleExpiresAt DateTime
   revokedAt  DateTime?
   ipAddress  String?   @db.VarChar(45)
   userAgent  String?   @db.VarChar(255)
@@ -125,8 +126,13 @@ unknown-email attempts are recorded without a mandatory user relationship.
 **Session** — one row per signed-in instance. `tokenHash` is the SHA-256 of the random
 token; the raw token is returned once to the app at sign-in and stored in Expo SecureStore.
 It never exists in the database, in logs, or in any response after login. `expiresAt` is
-creation + 8 hours. `revokedAt` is set on logout; a session is valid only when `revokedAt`
-is null and `expiresAt` is in the future. Cascade delete removes sessions with their user.
+creation + 8 hours. `lastActivityAt` starts at creation; `idleExpiresAt` starts at
+creation + 30 minutes, capped by `expiresAt`. Validity requires both deadlines strictly
+in the future, no revocation, and a currently verified ACTIVE eligible account.
+Successful authenticated user-initiated protected operations update activity atomically;
+restore/polling/failures do not. Runtime callers cannot directly extend deadlines.
+Cascade delete removes sessions with their user; this is not authorization for automatic
+account deletion. Enrollment cleanup remains gated by unresolved retention safeguards.
 
 **SignInAttempt** — append-only audit trail used by the per-email rate limiter and for
 security review. No passwords, tokens, or request bodies are stored. Rows older than 30
@@ -156,7 +162,7 @@ development.
 
 ```text
 Session:  active ──logout──> revoked
-          active ──expiry──> expired (expiresAt in the past; row kept until cleanup)
+          active ──idle/absolute deadline──> expired (row kept until approved cleanup)
 
 Account:  PENDING_APPROVAL ──approved──> ACTIVE        (admin feature)
           ACTIVE ──suspended──> SUSPENDED               (admin feature)
@@ -166,10 +172,29 @@ This feature only reads account status; it never changes it.
 
 ## Migration notes
 
+Owner override 2026-11-05 supersedes the T065 restriction: allow owned personal/contact
+self-edits without approval. New forward migration restores only current displayName/
+updatedAt grants with self RLS; protected account fields remain denied. Full profile
+models/endpoints/UI remain a separate feature. Earlier Admin-only notes are historical.
+
+Follow-up 2026-11-05: owner inventory confirmed zero accounts/STAFF sessions; remove
+the unused STAFF value with a guarded forward migration, leaving only STUDENT/ADMIN.
+The earlier legacy-retention notes below describe the original rename checkpoint,
+not the final target schema. No STAFF conversion or coach privileges are authorized.
+
 - Create reviewed Prisma/SQL migrations for the enums, auth/audit tables, RLS policies,
   narrow bootstrap functions, and grants; apply to a development database first.
-- Seed script inserts one verified active customer, one unverified customer, and one
-  suspended customer, and one verified pending-approval customer, all with a development password from `.env.seed`; the seed
+- Seed script inserts one verified active student, one unverified student, and one
+  suspended student, and one verified pending-approval student, all with a development password from `.env.seed`; the seed
   refuses to run when `NODE_ENV=production`. Staff and admin accounts are added with the
   web client feature.
-- No destructive migration is required by this feature.
+- T063 renames CUSTOMER to STUDENT through a forward migration, preserving existing
+  identities and relationships. Inventory STAFF first; retain its legacy enum value
+  until separately resolved without authorizing STAFF authentication or promotion.
+- T064 adds activity fields and narrow server-controlled updates. Backfill from session
+  creation rather than migration time so old sessions are not silently extended.
+- T065 removes the existing runtime self-profile update grant/policy. Student personal
+  and contact corrections are Administrator-only, not generic self-write access.
+- This schema is the intended target; applied migrations/current Prisma schema still
+  reflect the earlier baseline until T063–T065. Registration statuses, payment states
+  and package entitlements are separate feature models, not AccountStatus values.

@@ -6,6 +6,314 @@ milestone: 1
 
 # Authentication data layer
 
+## T035–T040 client foundations and native login service
+
+The mobile api client uses app.config.ts public EXPO_PUBLIC_API_URL/extra.apiUrl,
+including /api/v1. Development supports a LAN HTTP override; release requires HTTPS.
+URLs cannot contain credentials, queries or fragments. Requests use JSON headers,
+mobile platform identification for login, and bearer headers for authenticated calls.
+Login projects only email/password and never reads/sends a previous saved token.
+No cookies, logging or automatic retries are added. A 10-second abort/deadline bounds
+fetch and body decoding; every retry is a fresh explicit call. ApiClientError exposes
+reviewed codes/status/Retry-After but discards server/native diagnostic text. Decoded
+success JSON remains unknown until parseLoginResponse/parseSessionResponse projects it.
+
+AuthProvider/useAuth expose a per-provider local lifecycle. It starts restoring;
+missing-token reads can sign out, existing tokens remain restoring pending T050 server
+confirmation, and read failures expose a retry state without deleting tokens. signIn
+awaits secure persistence before publishing a safe active Student identity. Serialized
+storage operations and generation checks prevent an in-flight write from reviving
+state after local invalidation; concurrent invalidations share cleanup. Storage failures
+remain explicit. signOut is local cleanup only: T047 must arrange remote revocation.
+The provider is not mounted into the scaffold guard until T043. No cached user grants
+API authorization. Full restoration and request-associated 401 handling remain US3/US4.
+
+auth.schemas validates object bodies, exact mobile header, empty params/query schemas,
+normalized 3–254 character single-@/dotted-domain email and untrimmed 1–128 character
+passwords. Unknown body properties are stripped. The limiter shares the email schema.
+The visually reviewed form uses matching pure validation before its callback, no longer
+applies creation/reset complexity at login, and has accessible inline announcements.
+Credential-bearing preview output was removed. Remember Me/generic credential styling
+and real API form wiring remain the documented T042 design/integration gates.
+
+login(input, metadata, client) validates before database work and uses only the existing
+oak_auth_lookup/oak_create_session/oak_record_sign_in_attempt functions under the
+restricted runtime client. One real/dummy Argon2 verification precedes all role/status/
+verification disclosures. Only verified ACTIVE STUDENT can receive native login JSON.
+Session creation, lastSignInAt and the successful attempt share one transaction. The
+account lock held by oak_create_session permits a second lookup to reject concurrent
+role/password changes before commit. Failed attempts are separate writes after rollback;
+unknown emails need no User relation. Missing observed IP is explicitly stored as unknown.
+Malformed bodies are rejected before credential work; perimeter limiters still count them.
+Infrastructure/attempt failures fail closed at the safe HTTP boundary. No privileged
+fallback, migration, enrollment/payment lookup or entitlement activation is introduced.
+
+Validation: shared/API/API-test/mobile typechecks passed. The focused run passed 58 tests,
+including six real Docker database checks (session hash storage, last login/attempts,
+unknown-email recording, restrictions, atomic rollback and concurrent role change).
+T038's 23 production HTTP tests are intentionally red pending T041 route registration:
+three perimeter checks pass and 20 receive 404. The final full run reports 260 passed,
+20 expected T041-dependent failures, exit 1 and no unhandled errors. An earlier intermittent
+rate-limit worker exit did not recur in its isolated and final full reruns. No skipped,
+expected-failure markers or suppression were added. Device UI/native persistence checks
+remain manual; these results do not claim a working end-to-end login screen yet.
+
+## T034 mobile secure token storage
+
+apps/mobile/lib/token-store.ts exposes getSessionToken, setSessionToken and
+deleteSessionToken over Expo SecureStore using one private key. A read returns null
+only when SecureStore reports no entry. Callers must distinguish TokenStorageError
+from a missing token, await writes before signedIn, and handle deletion failures
+explicitly instead of claiming successful local logout. Native diagnostics are
+discarded; the helper has no logging, crash reporting or alternative storage path.
+It stores only an opaque token and does not validate identity or revoke sessions.
+
+iOS accessibility is WHEN_UNLOCKED_THIS_DEVICE_ONLY: foreground access without
+cross-device keychain migration. No biometric requirement is introduced. Android
+uses Expo's native secure storage. Installed Expo declarations document these
+options in node_modules/expo-secure-store/build/SecureStore.d.ts.
+
+Seven tests run through the existing API Vitest harness with the native module mocked;
+they cover round-trip/deletion, pending writes, read/write/delete rejection sanitization,
+synchronous bridge errors and empty input. Mobile and test typechecks passed. These
+tests do not certify native encryption or device persistence. Once T036/T042/T051
+connect the helper, device review must check saved-token cold launch, successful logout
+followed by relaunch, and recoverable storage failures without false signedIn/logout.
+No UI is added here; state feedback belongs to those integrated flows.
+
+## T033 shared authentication contracts
+
+packages/shared exports LoginRequest/LoginResponse/SessionResponse/LogoutResponse,
+UserSummary and AuthAccountStatus, plus ERROR_CODES/ErrorCode, ValidationField,
+ApiErrorResponse and isErrorCode. The package remains platform-independent: no Prisma,
+Node, Expo, environment or database imports. Shared role types retain Student/Admin;
+technical account approval does not represent enrollment/payment status.
+
+JSON expiry is an ISO string for the absolute cap; idle expiry/revocation can end a
+session earlier. Only login has sessionToken; token-free session/user types explicitly
+reject token/hash properties, and credential bodies contain no role claims. Logout has
+no body (204). Compile-time checks cover these boundaries; TypeScript does not validate
+decoded network values, sanitize messages, enforce ISO formatting or remove unknown
+properties. T039/T041 and the future client must still validate/project at runtime.
+
+The API keeps safe statuses/messages on the server, checks catalog completeness against
+the shared code union and types the outgoing error body. Eleven codes and known feedback
+fields stay consistent without exposing raw errors; local network/storage errors remain
+distinct from server codes. Shared/API/test typechecks and all 199 tests across 17 files
+passed. An initial worker exit did not reproduce in isolated and full reruns; no tests
+were skipped and no failures were suppressed. No Supabase or UI changes were made.
+
+## T032 development seed accounts
+
+Owner runs prisma/seed.ts against the existing Supabase development database, separate
+from Docker-only automated tests. The CLI validates explicit NODE_ENV=development,
+SEED_CONFIRM=DEVELOPMENT_FIXTURES_ONLY and private 12–128 character SEED_PASSWORD before
+connecting via existing DIRECT_URL. It never changes the restricted runtime URL/role.
+Secrets come from ignored .env/.env.seed; CLI output is counts/static errors only.
+
+Four reserved UUID/example.test accounts cover verified ACTIVE, unverified ACTIVE,
+verified SUSPENDED and verified PENDING_APPROVAL. All are STUDENT; none are Administrator.
+Each password gets an independent Argon2id salt. No sessions/attempts/audits are created.
+The operation is atomic and insert-only: existing matching reserved identities, including
+passwords/statuses, remain unchanged. An ID/email/role collision refuses the transaction.
+Changing SEED_PASSWORD later does not reset existing seed passwords. Removal is not
+automatic; an explicit owned-account cleanup can be supplied when the owner needs it.
+
+## T031 disposable database harness (owner validation passed)
+
+On 2026-11-05 the owner provisioned the local container and restricted test role,
+applied seven migrations, passed source/test typechecks, and ran all 182 tests across
+15 files successfully. This includes 11 real RLS, seven real audit and nine real session
+lifecycle/concurrency cases. Earlier pending notes describe the implementation stage;
+these local results do not certify deployment configuration or the deferred full audit.
+
+Docker CLI is already installed locally; the owner chose minimum setup effort. The
+owner-run local container exposes PostgreSQL only on 127.0.0.1:55432 with database
+oak_auth_test and synthetic credentials. No agent starts it or touches Supabase. A
+fixed-target migration helper cannot inherit cloud URLs. The owner provisions the
+restricted test login and a private test marker after migrations.
+
+Vitest loads only .env.test, sets NODE_ENV=test and overrides DATABASE_URL from
+TEST_DATABASE_URL, never development .env. Files run serially. The fixture refuses
+non-loopback URLs, wrong port/database/users/query overrides, missing reset opt-in,
+missing marker/latest migration, unsafe runtime roles or unexpected existing records.
+Cleanup deletes only this fixture's random UUID actors/sessions/audits and synthetic
+emails, never truncates. An interrupted/stale fixture causes refusal rather than a
+broader reset. RLS uses a single runtime connection; audit concurrency explicitly uses
+eight. All protected callbacks use real withSession on the restricted client.
+
+Existing RLS/audit tests now have real fixtures, and session-db tests add issuance,
+revoke/replay, current suspension, nonrenewing restore, capped interactive renewal,
+idle/absolute expiration and rollback if final renewal sees revocation. These are
+written tests, not execution results. Controlled concurrent
+lock-wait expiry and end-to-end denial-audit persistence are written tests awaiting owner execution.
+No full security certification or audit resumption is implied by this harness.
+
+## T030 application wiring (owner validation pending)
+
+createApp has no environment/database import or listener side effect. It disables
+X-Powered-By, sets explicit proxy trust before limiting, uses simple query parsing,
+Helmet with API CSP default-src/base-uri/frame-ancestors/form-action/object-src none,
+no-store, global quota then strict JSON parsing capped at 10 KiB. HSTS is production-only
+so local HTTP development remains usable. The versioned router currently exposes only
+GET /api/v1/health (liveness, not database readiness), validating/stripping unused
+params/query with Zod. Unknown routes receive static JSON 404; final errors use T023.
+
+server.ts validates env, warms the dummy password hash before binding 0.0.0.0:PORT,
+and releases limiter timers/Prisma on startup failure or signal shutdown. No migrations
+or database queries run at startup. Import does not automatically listen. T041 must
+register auth routes on the returned router with explicit input schemas, safe projections,
+sensitive quotas and T029 protected transaction/activity classification. Public health
+does not establish identity or renew idle time. Six app-boundary tests await owner
+execution; endpoint auth and real DB acceptance remain later tasks.
+
+## Current policy override — Student self-profile editing (2026-11-05)
+
+Owner superseded T065: Students may directly edit owned personal/contact information
+without Administrator approval. Validate/allowlist fields and enforce ownership. The
+auth schema currently contains only displayName; full profile models/UI are separate.
+New forward migration `20261105090400_student_self_profile` restores displayName and
+updatedAt column grants and self UPDATE policy. No table-wide update or protected
+role/status/credential/verification grants are added. SELF_PROFILE_EDIT is bit 2, with
+PHOTO_UPLOAD retained as an alias; Student mask stays 15. Progress and financial records
+remain academy-managed. Old Administrator-only descriptions below are historical.
+
+Owner migration/regression/metadata validation is pending T067. Revised RLS tests cover
+own edits, unqualified update isolation, explicit cross-user denial and role/status
+mutation denial; actual execution still awaits T031. T029 owner checks passed, with
+real transaction isolation/persistence still awaiting T031.
+
+## T029 authenticated route boundary (owner validation pending)
+
+`requireAuth(required, work, options)` is a terminal JSON route handler, not a middleware
+that authenticates in one transaction and calls detached downstream work. `work` receives
+the scoped tx, verified user and request, and returns safe JSON data. No Response object
+is supplied; the wrapper sends 200 only after withSession commits. All database work
+must use tx and be awaited, without network calls or detached tasks. Throw on business
+failure so interactive activity does not renew. Session lookup uses background mode.
+
+It accepts exactly one well-formed Bearer Authorization header, hashes locally, and
+sets req.auth only from current database identity with shared role permissions. It
+discards preexisting identity and clears request context afterward. It checks permission
+before resolving ownership; default self-ownership is intended only for `/auth/session`.
+Future resource routes must explicitly resolve the actual owner from scoped data, not
+client claims. requireOwnership compares owner without an Administrator bypass.
+
+Permission/ownership denial buffers minimal metadata, throws to roll back protected
+work, then opens a separate nonrenewing withSession transaction to append/commit the
+audit. No live parallel transaction is opened while the rejected scope holds locks.
+Failure to persist the denial returns safe 500 and never runs protected work. If the
+session has become invalid meanwhile, persistence fails closed; no privileged fallback
+or fabricated actor is used. Ordinary business errors do not fabricate denial audits.
+
+Standalone requirePermission still requires its trusted awaited audit adapter; the
+wrapper's internal adapter only buffers metadata until the rejected scope settles.
+Standalone requireOwnership has no audit side effect; protected routes should use the
+wrapper for the complete boundary. T030/T041 will register the session endpoint with
+an explicit safe identity/absolute-expiry projection. Tests mock transaction settlement;
+T031 must prove rollback followed by denial-audit commit and session/RLS isolation.
+
+## T028 permission gate (owner validation passed)
+
+Owner shared/API typechecks and all 62 focused tests passed on 2026-11-05.
+This validates the focused gate/pure helpers, not the pending T029/T030 wiring or
+T031 real database persistence/ownership isolation.
+
+Shared `permissions.ts` exports named bits, frozen Student=15/Admin=4294967295 masks,
+an exact role resolver returning zero for unsupported roles, and unsigned all-bits
+comparison. Student bits are SELF_READ=1, PHOTO_UPLOAD=2, TRAINING_SELF=4 and
+SESSION_REVOKE=8. Management bits cover Students=16, packages=32, payments=64,
+attendance=128, evaluations=256 and settings=512. These are implementation names for
+the revised two-role model, not extra endpoints or a grant to correct personal details.
+Ownership, approval, paid entitlements and database grants apply independently.
+
+`requirePermission(required, { audit })` reads only trusted req.auth userId/permissions.
+Invalid route masks (including zero/signed/out-of-range) fail at construction. Missing
+identity gives safe 401; all requested bits must pass, including the unsigned high bit.
+Denial awaits a minimal PERMISSION_DENIED event (actor, required mask and static target)
+and then returns safe 403. Audit rejection/throw stays closed with safe 500, no raw error.
+No request headers/body/query/URL or credentials are copied into audit material.
+
+T029 must populate identity from a verified live session, never client role claims.
+T029/T030 must supply an audit adapter committing independently of the rejected business
+transaction; there is intentionally no default no-op writer or privileged DB fallback.
+An allowed permission does not bypass subsequent ownership. T031 verifies real audit
+persistence and transaction boundaries. The focused middleware suite does not use a
+database; existing security/permissions.test.ts still awaits T029 ownership middleware.
+
+## T065 profile correction boundary (owner validation passed)
+
+Owner schema/deploy/typecheck, all 39 focused regression tests and profile/context/idle
+scripts passed 2026-11-05. Scoped Student denial and actual rollback remain T031 work.
+
+`20261105090300_admin_profile_corrections` removes runtime users UPDATE, explicit
+displayName/updatedAt column grants, and users_self_profile. Self-read stays scoped;
+the auth owner's narrow lastSignInAt/updatedAt grant remains. Runtime Prisma cannot
+perform generic profile updates even with an Administrator identity: the future
+Administrator workflow needs explicit permission checks, a constrained write interface
+and atomic audit. This task adds neither that workflow nor photo uploads.
+
+RLS tests assert self/unqualified update denial and unchanged fields. Audit rollback
+now revokes a second owned session before appending and throwing; both writes must
+roll back. T031 must provide aliceOtherSession distinct from Alice's context session,
+with valid idle/absolute deadlines. These tests await the real harness.
+`scripts/check-profile-permissions.ts` checks metadata and unscoped fail-closed behavior
+without changing account data; it does not prove scoped denial or actual rollback.
+
+## T064 idle expiry (owner validation passed)
+
+Owner validated schema/deploy/generation/typecheck, all 24 focused tests and the
+environment/session-context/idle smoke checks on 2026-11-05. Positive real database
+expiry/concurrency checks remain pending T031; route classification wiring is T029/T030.
+
+`20261105090200_session_idle_expiry` adds lastActivityAt and idleExpiresAt, backfilling
+from creation without extending existing sessions. Both absolute and idle deadlines
+are enforced by oak_current_user_id. Creation assigns eight hours absolute and 30 minutes
+idle using database time. The new no-argument oak_touch_session_activity locks the
+context session before reading current time and refuses expired/revoked/ineligible or
+unscoped sessions. Its definer alone can update the new fields; runtime has EXECUTE,
+not direct UPDATE. The function uses fixed search_path and denies PUBLIC/API roles.
+
+`withSession(hash, work, client, "interactive")` renews only after successful awaited
+work, within the same transaction. A false renewal aborts the transaction. Default
+`"background"` never renews; verifySession/restore/revoke paths keep that default.
+T029/T030 must classify operations on the server, never from a request header or clock.
+The helper cannot infer whether a callback returning normally represented business
+success: callers must throw on rejected operations and defer HTTP responses until commit.
+Seven mocked tests exercise orchestration; they do not prove real SQL concurrency.
+T031 must cover positive idle/absolute boundaries, capped renewal, concurrent revocation,
+rollback and role isolation. Configuration defaults to literal 30 minutes and eight
+hours to match SQL policy; changing either requires a coordinated reviewed migration.
+
+T063 owner validation is complete, including final STUDENT/ADMIN enum confirmation.
+
+## T063 Student role alignment (owner validation pending)
+
+Follow-up: the owner validated the rename, Client generation, typecheck, 17 focused
+tests and negative-session checks, and confirmed zero accounts/STAFF sessions. The new
+`20261105090100_remove_legacy_staff` migration now removes STAFF from the enum,
+guarded by a locked zero-STAFF check. It rebuilds Role, the audit-read policy and both
+Role-returning bootstrap functions atomically, restoring hardened owners and ACLs;
+unknown dependencies fail without CASCADE. The current Prisma target has only STUDENT
+and ADMIN. This follow-up is pending owner deploy/regression validation. The original
+legacy-preservation explanation below documents the earlier rename checkpoint.
+
+The new `20261105090000_student_role` migration renames the existing enum value
+CUSTOMER to STUDENT, preserving account IDs, relationships and enum-backed defaults.
+STAFF remains legacy storage only. Updated `oak_create_session` and
+`oak_current_user_id` reject STAFF at creation and every identity check without deleting
+or converting its records. STUDENT and ADMIN remain supported backend identities;
+future native login must admit STUDENT only, with Administrator web transport separate.
+`withSession` also rejects unsupported roles before protected callbacks.
+
+The two existing functions retain their signatures, security-definer setting, fixed
+search path, owners and grants through CREATE OR REPLACE. Applied migrations remain
+unchanged. Owner inventories role/session counts with `scripts/inspect-student-role.sql`
+before and after deploy; this agent has not queried account data. Five focused tests
+check helper role rejection, not actual SQL/RLS execution. T031 must cover real STAFF
+creation/replay denial and unchanged Student/Admin eligibility. Idle expiry and profile
+grant removal remain separate pending T064/T065 changes.
+
 The login feature's Prisma schema lives at
 [apps/api/prisma/schema.prisma](../../apps/api/prisma/schema.prisma).
 The approved fields and behavior remain defined in
@@ -284,3 +592,36 @@ exercise unknown-session rejection/idempotent revoke on the real DB. Owner TypeS
 --noEmit, all 12 orchestration tests, and that DB check passed on 2026-11-03.
 Positive sessions, expiry, current-account changes and concurrency/revoke-all
 RLS behavior require the isolated T031 fixtures before integration can be claimed complete.
+
+## T027 audit append/verification service
+
+`src/modules/audit/audit.service.ts` uses Node SHA-256 and the applied T019 SQL interfaces.
+appendAudit requires an existing authorized transaction, explicitly rejecting an outer
+PrismaClient whose separate autocommit queries would release the lock too soon. It calls
+oak_audit_head (transaction advisory lock 1935764577,1), checks the current actor, obtains
+the timestamp after locking, computes the exact approved concatenation, and inserts via
+the same transaction. No nested transactions, privileged fallback, or applied SQL edits.
+A failure must abort the associated administrative mutation. T028 denial reporting uses
+a separate authorized transaction because the business operation itself is rejected.
+
+Canonical payload serialization uses lexical object-key order, original array order,
+JSON number/string encoding, and UTF-8. Matching password/token/OTP/authorization/cookie/
+secret/API-key property names are redacted recursively before hashing. No toJSON/getter
+hooks execute; non-JSON inputs, cycles, sparse arrays, symbols and depth over 32 reject
+with safe INTERNAL_ERROR. Callers supply intentionally safe metadata: key redaction
+cannot identify arbitrary secrets placed in ordinary string values or target identifiers.
+Only payloadHash is stored, never the original payload. UTC millisecond timestamp and
+UUID actor normalization match the DB trigger's encoding.
+
+The pure verifier recomputes hashes in genesis-to-head link order, rejects malformed
+fields, duplicate IDs/links, altered content, and missing/reordered middle records.
+It returns no raw event data. Its inputs must be a complete authorized snapshot;
+actor-filtered RLS results cannot be assumed complete. Tail deletion needs a separately
+trusted checkpoint, and full privileged rewrites are outside hash-chain authenticity.
+The approved formula omits record id, so changing a unique valid id alone is not
+cryptographically detected. No stronger non-repudiation claim or external service is added.
+
+Fifteen focused tests cover hashing, canonicalization/redaction, unsafe payloads, outer
+client rejection, actor/head checks, insertion failure propagation, and pure verification.
+Owner typecheck and all 15 focused tests passed 2026-11-05; real database concurrency, trigger agreement,
+RLS and atomic rollback stay scheduled for T031's existing security audit suite.

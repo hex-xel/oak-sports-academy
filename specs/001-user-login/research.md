@@ -1,5 +1,10 @@
 # Research: User Login (Mobile)
 
+Owner override 2026-11-05: Student personal/contact self-editing needs no Administrator
+approval. Earlier Admin-only correction decisions are superseded; preserve ownership,
+field allowlisting and protected account/academic/financial boundaries. T067 tracks the
+forward migration; full profile UI remains a separate feature.
+
 **Feature**: `001-user-login` | **Date**: 2026-10-31
 
 Decisions that resolve the open choices in the plan. Requirements fixed by
@@ -157,6 +162,27 @@ the mock.
 
 ## Outstanding unknowns
 
-- Session lifetime remains the planned 8-hour absolute baseline.
-- Whether staff and admin will share the customer API's login endpoint is deferred to the
+- Session policy is now 30 minutes idle plus the retained eight-hour absolute cap;
+  owner delegated technical policy on 2026-11-05. No absolute sliding renewal.
+- Whether staff and admin will share the student API's login endpoint is deferred to the
   web-client feature; the service layer is transport-agnostic so either answer is cheap.
+
+## Revised decisions — 2026-11-05 (supersede earlier role/expiry assumptions)
+
+Verified assessment-approved Students have the same screens/navigation before and
+after enrollment. Authentication approval, registration state, payment and package
+entitlements stay separate. CUSTOMER becomes STUDENT through a forward migration;
+STAFF requires inventory and must not receive automatic role conversion or access.
+Administrator-only profile corrections require revoking the old runtime self-write grant.
+
+Choose 30-minute server-authoritative idle expiry, retaining the eight-hour absolute
+cap. This project choice balances usability with session exposure and is informed by
+[OWASP Session Management](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html);
+OWASP does not mandate this exact number. Successful authenticated user-initiated
+protected operations renew only idle validity, atomically and capped by absolute expiry.
+Polling/restore checks/failures do not renew it; client clocks and role claims are not
+authority. At either exact deadline reject, including under concurrent requests.
+T063–T065 implement these changes; T031 verifies database behavior.
+
+Full Home/navigation, email-link password reset and browser delivery belong to dependent
+features. Automatic deletion remains gated by retention and pending-payment decisions.

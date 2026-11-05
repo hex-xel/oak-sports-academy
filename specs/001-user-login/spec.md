@@ -4,18 +4,18 @@
 
 **Created**: 2026-10-31
 
-**Status**: Revised — mobile-first scope; T016 alignment approved 2026-11-02
+**Status**: Revised — T016 baseline and owner decisions of 2026-11-05; implementation corrections pending T063–T066
 
 **Input**: "Login for users on the mobile app first. The web app for admins and staff comes
-later this semester; the customer web app next semester."
+later this semester; the student web app next semester."
 
 **Source requirements**: `specifications.md` §2 (mobile app, Expo, SecureStore), §4
-(authentication and session rules), §5 (login flow), §6 (roles), §7 (customer accounts),
-§12 (testing). Implements **customer sign-in and sign-out in the Android app** only.
+(authentication and session rules), §5 (login flow), §6 (roles), §7 (student accounts),
+§12 (testing). Implements **student sign-in and sign-out in the Android app** only.
 
 ## Scope note
 
-This feature is the customer mobile login. Deliberately excluded:
+This feature is the student mobile login. Deliberately excluded:
 
 - Staff and admin web login — the API is designed to accept a cookie-based web client
   later, but no web client is built here.
@@ -28,11 +28,11 @@ This feature is the customer mobile login. Deliberately excluded:
 
 ### User Story 1 - Sign in on the app (Priority: P1)
 
-A customer opens the Oak Sports Academy app, enters their email and password on the
+A student opens the Oak Sports Academy app, enters their email and password on the
 native login screen, and lands on their home screen with a session that survives app
 restarts until it expires.
 
-**Why this priority**: Every customer screen sits behind this. Without it, no other
+**Why this priority**: Every student screen sits behind this. Without it, no other
 mobile feature can be demonstrated or tested on a device.
 
 **Independent Test**: Install the app on a device or emulator with a seeded verified
@@ -70,7 +70,7 @@ without asking for credentials again.
 
 ### User Story 2 - Sign out (Priority: P2)
 
-A signed-in customer taps "Sign out" and is returned to the login screen. The session is
+A signed-in student taps "Sign out" and is returned to the login screen. The session is
 revoked on the server, and the stored token is deleted from the device.
 
 **Why this priority**: Shared phones and second-hand devices are common. Removing the
@@ -99,7 +99,7 @@ endpoint with the copied token and confirm it is rejected.
 When a session expires or is revoked elsewhere, the app returns the user to login without
 crashing, losing navigation history, or showing raw error text.
 
-**Why this priority**: Sessions expire after 8 hours. Without predictable handling, the
+**Why this priority**: Sessions expire after 30 idle minutes or eight hours absolute. Without predictable handling, the
 app fails mid-action in a way that looks like a bug to a participant.
 
 **Independent Test**: Corrupt or expire the stored token, reopen the app, and confirm it
@@ -120,7 +120,7 @@ shows the login screen with a "session ended" message rather than an error scree
 
 ### Functional Requirements
 
-- **FR-001**: The app MUST authenticate customers with email and password against the
+- **FR-001**: The app MUST authenticate students with email and password against the
   API.
 - **FR-002**: The API MUST validate every sign-in request and reject malformed input
   without revealing internal details. Validate bodies, route parameters, and query
@@ -139,8 +139,13 @@ shows the login screen with a "session ended" message rather than an error scree
   written to AsyncStorage, logs, crash reports, or screenshots.
 - **FR-008**: Authenticated requests MUST send `Authorization: Bearer <token>`; the token
   MUST never appear in a URL or query string.
-- **FR-009**: Sessions MUST expire after a defined lifetime; expired, revoked, and unknown
-  tokens MUST all be rejected identically.
+- **FR-009**: Sessions MUST expire server-side after 30 minutes of inactivity or eight
+  hours from creation, whichever comes first. At the exact deadline they are expired.
+  Successful authenticated user-initiated protected operations may renew only the idle
+  deadline, capped by absolute expiry. Restore checks, background polling, failed
+  requests and client timestamps MUST NOT extend validity. Concurrent requests cannot
+  revive an expired or revoked session. Expired, revoked and unknown tokens are rejected
+  identically; client timers never authorize access.
 - **FR-010**: Signing out MUST revoke the current session server-side and clear the token
   from secure storage; other devices MUST keep their sessions. Missing or malformed
   Bearer headers return 401; well-formed expired, unknown, or revoked tokens return 204
@@ -170,9 +175,22 @@ shows the login screen with a "session ended" message rather than an error scree
   limits (10/15 minutes/IP and 5/15 minutes/email), with Retry-After on 429. JSON bodies
   are capped at 10 kB; mobile requests provide bounded timeout and explicit retry.
 
+- **FR-020**: Verified assessment-approved STUDENT accounts MUST have the same student
+  screens and navigation before and after enrollment. Registration/payment/package
+  status is separate from account approval; navigation does not activate unpaid
+  entitlements. Unapproved accounts remain blocked and expired packages do not revoke
+  assessment approval. Administrator capabilities are never granted by enrollment.
+- **FR-021**: Students MAY edit their own personal/contact profile without Administrator
+  approval (owner override 2026-11-05). Allowlist fields and validate ownership/server-side
+  input; role, status, verification, credentials, progress and financial records remain
+  protected. The auth schema currently permits only displayName and its update timestamp;
+  full profile editing/photo upload belongs to a separate feature.
+  CUSTOMER migrates to STUDENT without data loss. Legacy STAFF is not a supported
+  business role and MUST NOT be silently converted or given new access.
+
 ### Key Entities
 
-- **Account**: A customer who can sign in. Unique email, password hash, role, email
+- **Account**: A student who can sign in. Unique email, password hash, role, email
   verification timestamp, account status, last sign-in time.
 - **Session**: One signed-in instance. Protected token reference, owning account, expiry,
   revocation time, optional device label.
@@ -183,7 +201,7 @@ shows the login screen with a "session ended" message rather than an error scree
 
 ### Measurable Outcomes
 
-- **SC-001**: A returning customer signs in from app launch in under 30 seconds on a
+- **SC-001**: A returning student signs in from app launch in under 30 seconds on a
   typical mobile connection.
 - **SC-002**: At least 95% of sign-in attempts with valid credentials succeed on the first
   try during acceptance testing.
@@ -197,14 +215,49 @@ shows the login screen with a "session ended" message rather than an error scree
 ## Assumptions
 
 - Accounts are created by a separate registration feature; seeded accounts provide one
-  verified active customer, one unverified customer, one suspended customer, and one
-  verified pending-approval customer for testing.
-- Roles stay in the data model, but only the customer role is exercised here; staff and
+  verified active student, one unverified student, one suspended student, and one
+  verified pending-approval student for testing.
+- Roles stay in the data model, but only the student role is exercised here; staff and
   admin authenticate through the later web client.
-- Session lifetime is 8 hours absolute, several devices per account allowed.
+- Sessions have a 30-minute idle limit and eight-hour absolute cap; several devices
+  per account are allowed. Activity policy is server-controlled, not a client heartbeat.
 - The API is reachable from a physical device over the local network in development.
 - The login screen is native. Content pages that later become WebView pages are out of
   scope and do not affect the session design, because the token handoff for those pages is
   a separate decision.
 - No social login, MFA, biometric unlock, or "remember me" — none are in the approved
   baseline.
+
+## Revised source alignment — 2026-11-05
+
+The owner's access and role answers resolve the relevant section 16 questions;
+technical timeout policy was delegated. See
+[decision record](../../docs/architecture/login-requirements-alignment.md).
+The owner explicitly approved the master amendments on 2026-11-05; sections 4, 6,
+7.2 and 16 now record these decisions. Implementation corrections remain pending.
+
+| Source | Feature coverage / boundary |
+| --- | --- |
+| FR L-01; NFR 5/6 | FR-005/009/016/017/020/021: verified approval, Student/Admin, idle expiry, ownership |
+| FR H-01 | Same `/` landing route for approved and enrolled students; complete Home content/navigation belongs to the Home feature |
+| FR P-01 | Owned personal/contact self-editing without approval; full profile UI deferred |
+| NFR 1 | Add SC-006 below; existing 30-second human journey does not replace server/request targets |
+| NFR 9 | Native Android slice retained; responsive Student web/browser coverage is a dependency requiring delivery-scope confirmation |
+| FR AF-01 | Deadline/deletion safeguards remain gated; no deletion implementation in login |
+
+- **SC-006**: Under documented normal-network and workload conditions, pages load
+  within three seconds and login requests complete within five seconds. Record device,
+  build, API/database warm or cold state, network latency and workload with acceptance
+  results; agree these conditions with the owner before claiming a pass. Browser-page
+  measurements belong to the dependent web feature, not this native-only slice.
+
+Additional acceptance: a verified ACTIVE approved-but-unenrolled Student reaches the
+same landing/navigation as an enrolled Student, without receiving unpaid entitlements.
+Idle checks cover just before and exactly at 30 minutes, successful foreground activity,
+background/restore failures not extending time, eight-hour capping and concurrent
+expiry/revocation. T031 supplies positive database fixtures; T063–T065 are still pending.
+
+Email-link password recovery, full Home/navigation, consent and destructive enrollment
+cleanup belong to dependent features. Existing OTP-reset, Remember Me and password-length
+UI discrepancies require design reconciliation before implementation; no UI is changed
+by this artifact update. Guardian data does not introduce a separate guardian login.

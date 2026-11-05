@@ -2,6 +2,7 @@
   "name": "@oak/api",
   "version": "0.0.1",
   "private": true,
+  "prisma": { "seed": "node --import tsx prisma/seed.ts" },
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",

@@ -1,0 +1,37 @@
+{
+  "source": "C:\\Users\\ventura\\Downloads\\PBL Milestone 1 (2).docx",
+  "source_sha256": "3cea2292958f7b1be5d7ef6997e3ceb987bc9376c6fbd97cce3c96da80d972d5",
+  "edits": [
+    {
+      "before": "This proposal presents the revised algorithmic design of the Oak Sports Academy Training Registration and Management System based on the clarified client workflow. It replaces the previous preference-weighted schedule recommendation algorithm because the revised workflow allows students to select available schedules but does not establish a schedule recommendation feature.",
+      "after": "This proposal presents the algorithmic design of the Oak Sports Academy Training Registration and Management System. The system supports participant registration, free-trial assessment, enrollment, attendance monitoring, training-package management, and digital document collection. The proposed algorithms maintain consistent participant records, support explainable participation-risk classification, and validate uploaded image documents."
+    },
+    {
+      "before": "The revised design contains three concrete algorithms:",
+      "after": "The proposed design contains three concrete algorithms:"
+    },
+    {
+      "before": "The revised client workflow requires newly white-belt and colored-belt students to undergo a free-trial assessment before enrollment. After attendance and assessment, authorized academy staff approve or reject the applicant. An accepted student must enroll within one week; otherwise, the account is deleted [1].",
+      "after": "The academy workflow requires newly white-belt and colored-belt students to undergo a free-trial assessment before enrollment. After attendance and assessment, authorized academy staff approve or reject the applicant. An accepted student must enroll within one week; otherwise, the account is deleted [1]."
+    },
+    {
+      "before": "The revised flow establishes the following requirements [1]:",
+      "after": "The academy workflow establishes the following requirements [1]:"
+    },
+    {
+      "before": "As an academy administrator, I want assessment and enrollment events validated by a lifecycle FSM and uploaded IDs checked against their actual image format so that participant records follow the revised workflow and inadequate uploads can be corrected.",
+      "after": "As an academy administrator, I want assessment and enrollment events validated by a lifecycle FSM and uploaded IDs checked against their actual image format so that participant records follow academy procedures and inadequate uploads can be corrected."
+    },
+    {
+      "before": "Obtain approval for specification reconciliation.",
+      "after": "Confirm the lifecycle transition table and unresolved business policies."
+    }
+  ],
+  "justified_paragraphs": 356,
+  "code_paragraphs_preserved": 376,
+  "removed_chat_delimiters": 36,
+  "preserved_equations": 101,
+  "changed_package_parts": [
+    "word/document.xml"
+  ]
+}

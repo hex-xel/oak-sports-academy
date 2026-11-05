@@ -1,6 +1,12 @@
 # OAK SPORTS ACADEMY TRAINING REGISTRATION AND MANAGEMENT SYSTEM
 ## Final Project Technical Specification and AI Development Instructions
 
+## Revision Basis and Precedence
+
+Revised on 2026-11-05 against `REQUIREMENTS ENGINEERING-v3.12.09.2026.docx` (document heading: Group 5, III-BCSAD, University of Makati, October 17, 2026). The source defines Student requirements FR R-01 through FR P-01, Administrator requirements FR AL-01 through FR AN-01, and non-functional requirements 1–16.
+
+The revised business requirements below supersede conflicting older business rules in this file. Compatible stack and security decisions are retained as technical decisions, not attributed to the revised requirements document. Unresolved source conflicts are listed in section 16; do not silently resolve them in implementation. This revision changes the master specification only; existing feature specifications, plans, tasks, architecture notes, and code require a separate consistency review before implementation.
+
 ## 1. PROJECT OVERVIEW
 
 Project Name: Oak Sports Academy Training Registration and Management System Enhancement
@@ -10,14 +16,14 @@ Client: Oak Sports Academy, Taguig Branch
 Project Type: Web and Android application system
 
 Primary Goal:
-Develop a centralized system that improves athlete registration, participant management, training enrollment, free-trial registration, schedule management, payment monitoring, and academy information management.
+Develop a centralized system for student registration, free-trial assessment and account approval, package enrollment, manually confirmed GCash/QR Ph payments, assigned schedules, attendance, training modules, belt promotion, monthly renewal, and medical make-up classes.
 
 The system will have three client applications:
-1. Android mobile application for athletes and parents/guardians.
+1. Android mobile application for students, with guardian information required for minors.
 2. Public website for academy information and announcements.
-3. Web-based admin dashboard for authorized academy staff.
+3. Web-based Administrator dashboard, with scheduling and attendance duties also described for the coach.
 
-All applications must communicate with one shared backend API and database.
+All applications must communicate with one shared backend API and database. The revised requirements explicitly define Student and Administrator modules and mobile-browser compatibility. The existing Android app and public website remain technical baseline decisions; extra public content features are not newly required by this revision.
 
 The system should be developed as a practical academic project with limited development time and free-tier services. Avoid unnecessary complexity, excessive dependencies, and features outside the agreed initial release.
 
@@ -63,7 +69,7 @@ The Express backend should connect to PostgreSQL using Prisma. All database oper
 
 Do not expose database credentials, service-role keys, or other privileged credentials in browser or mobile application code.
 
-Supabase Free currently provides a limited database and storage quota and can pause projects after inactivity. Review its current limits before deployment:
+Supabase free-tier quotas and inactivity behavior must be verified before deployment; these service references are retained from the technical baseline and are not verified by this requirements revision:
 https://supabase.com/pricing
 https://supabase.com/docs/guides/platform/free-project-pausing
 
@@ -75,7 +81,7 @@ Use private buckets and authorized server-side access. Do not make sensitive doc
 
 The backend must verify file ownership and permissions before providing access or generating short-lived signed download links.
 
-Supabase Storage Free has limited storage capacity, currently listed as 1 GB:
+Verify current Supabase Storage quotas before deployment:
 https://supabase.com/docs/guides/storage/pricing
 
 ### Email Delivery
@@ -88,7 +94,7 @@ Use email delivery for:
 
 Keep email delivery behind a small backend service module so the provider can be replaced without changing authentication logic.
 
-Resend currently lists a free allowance of 3,000 emails per month, with a daily limit of 100 emails. Verify current limits and sender-domain requirements before use:
+Verify Resend free-tier allowances, daily limits and sender-domain requirements before use; assess them against the five-minute notification target:
 https://resend.com/pricing
 
 ### Hosting and Deployment
@@ -146,22 +152,22 @@ The team is responsible for:
 
 ### Academy Business Logic
 Implement:
-- Participant and parent/guardian account relationships.
+- Student records and mandatory parent/guardian information for minors; separate guardian logins are not required by the revised source.
 - Training programs and training types.
 - Training packages, rates, and session counts.
-- Free-trial eligibility and capacity allocation.
+- Administrator-scheduled mandatory free-trial assessment before approval and enrollment.
 - Training schedule conflict detection.
 - Enrollment and approval workflows.
-- Payment-status monitoring.
-- Staff permissions.
-- Academy content and announcements.
+- GCash/QR Ph payment submissions and Administrator confirmation or rejection.
+- Student and Administrator permissions; restricted coach scheduling and attendance access once the coach account model is confirmed.
+- Automatic email and in-app notifications, delivery status, and failed-delivery resend.
 - Relevant reports and dashboards.
 
 ### Database and API
 The team will design the database schema, implement Prisma models and migrations, create REST endpoints, validate incoming data, enforce business rules, and test authorization.
 
 ### UI and Application Integration
-The team will build the mobile app, public website, and admin dashboard and integrate all three with the same backend.
+The team will integrate the retained mobile/web clients with the same backend. Confirm the responsive Student web surface required by NFR 9 before expanding application scope.
 
 ### Managed Services
 Use managed services where they reduce unnecessary work:
@@ -202,7 +208,7 @@ Initial baseline configuration:
 - Salt: generated automatically by the library.
 - Verification: use the library's password verification function.
 
-These parameters are a starting point and must be checked against the installed library and actual hosting environment. Tune them after performance testing.
+These parameters are a starting point and must be checked against the installed library and actual hosting environment. Tune them after owner-run performance testing.
 
 Never:
 - Store plaintext passwords.
@@ -220,7 +226,7 @@ Use opaque, server-managed sessions instead of implementing a JWT access-token a
 Session rules:
 1. Generate a cryptographically random session token using Node.js crypto.
 2. Store only a hash of the session token in PostgreSQL.
-3. Store session expiration and revocation information.
+3. Store absolute expiry, last qualifying activity, idle expiry and revocation. Enforce 30-minute idle and eight-hour absolute expiry server-side, rejecting at either exact deadline. Only successful authenticated user-initiated protected operations renew idle expiry, capped by absolute expiry. Restore checks, background polling, failed requests and client timestamps do not renew validity; concurrent requests cannot revive expired or revoked sessions. This policy was approved on 2026-11-05 and implements NFR 5.
 4. Send the session token to the client only through the intended secure channel.
 5. Check session validity on protected API requests.
 6. Revoke the current session during logout.
@@ -244,7 +250,7 @@ Do not store session tokens in the URL.
 ### OTP and Password Reset Security
 
 For email verification:
-- Generate a short numeric OTP using cryptographically secure randomness.
+- Generate a 6-digit numeric OTP using cryptographically secure randomness.
 - Store a keyed hash or otherwise securely protected representation of the OTP.
 - Associate it with the account and expiration time.
 - Limit verification attempts and resend requests.
@@ -263,14 +269,15 @@ The team must use established cryptographic APIs rather than inventing security 
 
 ### Cryptographic Append-Only Event Logging (SHA-256 Hash Chain)
 
-To guarantee audit integrity, tamper detection, and non-repudiation required for Information Assurance and Security, all administrative actions must be recorded in an immutable, append-only audit log structured as a cryptographic hash chain.
+Retain the existing SHA-256 append-only audit design to support the revised auditability requirement. Hash chaining provides tamper evidence under documented access and verification assumptions; it does not alone guarantee non-repudiation or detect a privileged rewrite of the entire chain without an independently trusted checkpoint.
 
 1. **Triggered Actions**: Every time an administrator or staff member:
    - Creates or updates an account,
    - Approves, modifies, or rejects an enrollment,
    - Uploads, verifies, or revokes a participant document/file,
    - Adjusts fee schedules or payment statuses,
-   - Grants or alters user permissions/roles.
+   - Grants or alters user permissions/roles,
+   - Changes schedules or packages, records assessment outcomes, or promotes a belt.
 2. **Logged Fields**:
    - `id`: Unique identifier (UUID).
    - `timestamp`: UTC ISO-8601 timestamp.
@@ -285,7 +292,7 @@ To guarantee audit integrity, tamper detection, and non-repudiation required for
 3. **Genesis Record**: The initial record in the chain has a fixed, well-known `previousHash` consisting of 64 hexadecimal zeros (`0000000000000000000000000000000000000000000000000000000000000000`).
 4. **Tamper Detection Mechanism**:
    - The append-only table permits only `INSERT` and `SELECT` operations at the database role level; `UPDATE` and `DELETE` permissions are strictly revoked.
-   - An integrity verification routine recomputes the hash chain sequentially from the genesis record. If an attacker directly alters, injects, or deletes any historical record in the database, the hash chain breaks at that exact entry, exposing the tampering immediately.
+   - An integrity verification routine recomputes the hash chain sequentially from the genesis record. Verification detects inconsistent records and links when run; tail deletion or complete privileged chain reconstruction requires an independently retained checkpoint to detect. Serialize concurrent appends and commit the business mutation and audit record atomically.
 
 ### Information Assurance & Security Architecture (The CIA Triad)
 
@@ -293,8 +300,8 @@ The system enforces strict compliance with Information Assurance and Security (I
 
 #### 1. Confidentiality (Data Privacy & Access Control)
 - **Compliance with the Data Privacy Act of 2012 (RA 10173)**: Because Oak Sports Academy processes personally identifiable information (PII) of minors (youth athletes), specific privacy safeguards are mandated:
-  - Explicit parent or legal guardian consent is recorded prior to storing minor participant data, health waivers, or biometric photos.
-  - Granular data isolation: Minors cannot access other athletes' data. Parents/guardians can only view linked children. Staff view only athletes within assigned programs.
+  - Record waiver acceptance and protect minor data, 2x2 photos, and valid IDs. Preserve the existing requirement for explicit parent/legal guardian consent before storing minor data; reconcile the source registration order and non-parent relationship choices before implementation (section 16). A photo is not automatically treated as biometric processing.
+  - Granular data isolation: Students can access only their own records. If existing linked-guardian or staff capabilities are retained, their access remains limited to explicitly linked children or assigned programs; these are not additional required user roles.
   - Private Supabase Storage buckets for sensitive files (IDs, medical forms, photos) protected by short-lived, signed URLs (TTL $\le 15$ minutes); public access is disabled.
 - **Role-Based Access Control (RBAC) & PostgreSQL Row-Level Security (RLS)**:
   - Gate middleware enforces access controls at the application API layer.
@@ -306,7 +313,7 @@ The system enforces strict compliance with Information Assurance and Security (I
   - SQL injection prevention is guaranteed through Prisma ORM's parameterized query engine.
   - XSS protection is maintained via HTTP security headers (Helmet, strict CSP) and React/React Native's automatic output encoding.
 - **Immutable Administrative Audit Logging**:
-  - Cryptographic append-only event logging with SHA-256 chaining (detailed above) prevents repudiation and exposes historical database tampering.
+  - Cryptographic append-only event logging with SHA-256 chaining (detailed above) supports detection of historical tampering within the verification and checkpoint limits described above.
 
 #### 3. Availability (Operational Resilience & Reliability)
 - **API Rate Limiting & Denial-of-Service (DoS) Defense**:
@@ -333,7 +340,7 @@ Development and code reviews should reference:
 7. The user submits the OTP.
 8. The backend validates its hash, expiration, attempt limit, and account association.
 9. If valid, the account's email is marked verified.
-10. The account follows the academy's applicable approval rules.
+10. Complete required information, uploads, and waiver acceptance. The Administrator schedules and emails a free-trial assessment, then approves or rejects the student after assessment. Approval starts the default one-week enrollment/payment deadline; verification alone never grants approval.
 
 Email verification and academy approval are separate. A verified email does not automatically mean the account, participant, or enrollment is approved.
 
@@ -342,7 +349,7 @@ Email verification and academy approval are separate. A verified email does not 
 2. The backend validates the input and applies rate limits.
 3. The backend retrieves the account.
 4. The password is verified using Argon2id.
-5. The backend checks email verification, account status, and other applicable login restrictions.
+5. The backend checks email verification, assessment approval, account status, and other applicable login restrictions. Only verified, approved accounts may authenticate. Whether approved but not-yet-enrolled students receive limited enrollment access requires clarification in section 16; do not bypass the gate.
 6. If permitted, the backend creates a server-managed session.
 7. The session token is delivered through the appropriate web or mobile mechanism.
 8. The client uses the session for subsequent authenticated requests.
@@ -374,148 +381,151 @@ Invalid credentials should produce safe responses that do not disclose whether a
 
 ## 6. ROLES AND AUTHORIZATION
 
-Use backend-enforced role-based access control combined with ownership checks.
+The revised source defines two user roles: Student and Administrator (NFR 5). Registration cannot grant Administrator privileges. All protected operations require backend session validation, a centralized permission gate, and resource ownership checks.
 
-Initial role categories:
-- Customer: an athlete or parent/guardian account holder.
-- Staff: an authorized academy staff member.
-- Admin: an administrator with explicitly granted administrative permissions.
+- Student: access only their own dashboard, eligible training choices, schedules, notifications, profile, attendance, evaluations, belt history, and payments. Students may edit their own personal/contact information and upload/edit their 2x2 photo without requesting Administrator approval (owner override 2026-11-05). Validate edits server-side and restrict them to an explicit profile-field allowlist. Role, account approval/status, credentials/verification, belt/progress, attendance, balances and payment records are not general profile fields. Viewing the valid ID does not imply permission to replace it.
+- Administrator: review registrations, schedule and assess free trials, approve/reject accounts, correct student information, manage packages and fees, record progress and belt promotion, assign/change/cancel schedules, manage attendance and medical make-up approvals, confirm/reject payments, and inspect notification delivery.
+- Coach: FR AC-01 and FR AA-01 permit scheduling and attendance duties, but the source does not define a third login role. Confirm whether this is the Administrator acting as coach or delegated staff access before implementing separate credentials. Never grant payment or account-approval powers implicitly.
 
-Do not assume that every participant needs an independent login. An account holder may be responsible for multiple participant records.
+Guardian information is required for minors; no separate guardian login is introduced. Migrate `CUSTOMER` to `STUDENT` through a forward migration preserving existing users and relationships. `STAFF` remains legacy storage pending inventory and a separate coach/delegation decision. Do not silently convert it, promote it or grant it access. Administrator remains distinct. These role-alignment decisions were approved on 2026-11-05; linked-participant permissions do not introduce additional business scope.
 
-A parent/guardian must only access participants linked to their account. An athlete must only access their own participant record and related resources unless another explicitly authorized relationship exists.
-
-Staff permissions should be limited to their assigned responsibilities. Admin access must not be granted merely because a user submits a role name during registration.
-
-The backend must enforce authorization on every protected endpoint. Hiding a button or page in the frontend is not an authorization control.
-
-Use a centralized permission approach rather than duplicating inconsistent role checks throughout the application.
-
-### Role-Based Access Control (RBAC) Bitmasking & Gate Middleware
-
-To support high-performance, composable, and mathematically verifiable permission checking, the backend implements an RBAC Gate Middleware architecture with optional bitmasking:
-
-1. **Permission Bitmask Representation**:
-   Individual fine-grained capabilities are defined as powers of 2 (bit flags):
-   - `PERM_READ_SELF` = $1$ ($1 \ll 0$)
-   - `PERM_WRITE_SELF` = $2$ ($1 \ll 1$)
-   - `PERM_READ_LINKED_MINORS` = $4$ ($1 \ll 2$)
-   - `PERM_WRITE_LINKED_MINORS` = $8$ ($1 \ll 3$)
-   - `PERM_STAFF_VIEW_ROSTER` = $16$ ($1 \ll 4$)
-   - `PERM_STAFF_MANAGE_SCHEDULE` = $32$ ($1 \ll 5$)
-   - `PERM_STAFF_RECORD_ATTENDANCE` = $64$ ($1 \ll 6$)
-   - `PERM_ADMIN_MANAGE_ACCOUNTS` = $128$ ($1 \ll 7$)
-   - `PERM_ADMIN_APPROVE_ENROLLMENT` = $256$ ($1 \ll 8$)
-   - `PERM_ADMIN_VIEW_AUDIT_LOG` = $512$ ($1 \ll 9$)
-   - `PERM_ADMIN_ALL` = `0xFFFFFFFF`
-
-2. **Role Mapping**:
-   High-level roles are bitwise combinations of individual permissions:
-   - `CUSTOMER` = `PERM_READ_SELF | PERM_WRITE_SELF | PERM_READ_LINKED_MINORS | PERM_WRITE_LINKED_MINORS`
-   - `STAFF` = `CUSTOMER | PERM_STAFF_VIEW_ROSTER | PERM_STAFF_MANAGE_SCHEDULE | PERM_STAFF_RECORD_ATTENDANCE`
-   - `ADMIN` = `PERM_ADMIN_ALL`
-
-3. **Gate Middleware Verification**:
-   - Express Gate Middleware (`requirePermission(permissionBitmask)`) evaluates authorization in constant $O(1)$ time using bitwise AND:
-     $$(\text{userPermissions} \mathbin{\&} \text{requiredBitmask}) == \text{requiredBitmask}$$
-   - If the check evaluates to `false`, the middleware immediately terminates the request with `403 FORBIDDEN` and emits a security audit event.
-   - Resource-level ownership checks (e.g. verifying that a participant ID in the request route is owned by the authenticated parent user) are executed immediately following the permission gate.
+Retain the existing `requirePermission(permissionBitmask)` gate where compatible. An action is permitted only when `(userPermissions & requiredBitmask) == requiredBitmask`, followed by ownership checks. Deny with 403 and record appropriate security audit information. Self-profile editing permits validated owned personal/contact fields, but never protected account fields, balances, approval, belt level or payment status. Client visibility never grants authorization.
 
 ## 7. INITIAL RELEASE FEATURES
 
-Prioritize the core features needed for the academy's registration and training workflows.
+### 7.1 Student Registration and Assessment (FR R-01)
 
-### Public Website
-- Home page.
-- About the academy.
-- Programs and training types.
-- Coaches.
-- Events and announcements.
-- Public schedules.
-- Merchandise information where required.
+Provide a six-step form with a visible progress indicator:
 
-### Customer Accounts and Participants
-- Registration and login.
-- Email verification and password recovery.
-- Parent/guardian accounts.
-- Participant profiles.
-- Multiple linked participants per parent/guardian.
-- Participant photo and required-document uploads.
-- Enrollment status and relevant account information.
+1. Student type: Newly White Belts or Experienced Students (Colored/Black Belts).
+2. Credentials: email, password, confirm password, and 6-digit email verification code.
+3. Personal information: first name, middle name, surname, gender, date of birth, and age computed from date of birth.
+4. Contact details: mobile number; address comprising house and lot, barangay, municipality, province. For minors, require guardian name, relationship (Parent, Aunt/Uncle, Sibling, Other), occupation, and contact number; prevent submission if missing.
+5. Requirements: 2x2 photo and valid ID.
+6. Terms and agreement: readable waiver and acceptance checkboxes; prevent registration submission until all are accepted.
 
-### Training and Enrollment
-- Kyorugi.
-- Poomsae.
-- Mixed Program.
-- Group Class.
-- One-on-One Private Coaching.
-- Packages, rates, and session counts.
-- Schedule selection.
-- Enrollment status management.
-- Free-trial eligibility and slot allocation.
-- Schedule conflict detection.
+After submission, show confirmation instructing the student to check email for the free-trial schedule. The Administrator assigns and emails the date/time. The student attends for assessment. The Administrator approves or rejects based on results. Approved students must enroll and pay within one week; accounts not enrolled by the deadline are automatically deleted. The deletion and pending-payment safeguards require confirmation in section 16 before enabling destructive automation.
 
-### Admin Dashboard
-- Account and participant management.
-- Account approval and correction workflows.
-- Program and training-type management.
-- Package and rate management.
-- Schedule management.
-- Free-trial capacity management.
-- Enrollment approval and rejection.
-- Payment-status monitoring.
-- Public content, coach, event, and announcement management as required.
+### 7.2 Login and Student Home (FR L-01, FR H-01)
 
-### Payment Scope
-For the initial release, prioritize recording and monitoring payment status and any required payment evidence. Do not implement a payment gateway or claim that payments are automatically verified unless the client explicitly confirms that requirement and the group has time to integrate it.
+- Login uses email/password for verified students approved after assessment. Approved and enrolled students have the same Student screens and navigation; enrollment/payment/package status remains separate from account approval. Equal navigation does not activate unpaid training entitlements. Unapproved accounts cannot log in (owner decision approved 2026-11-05).
+- Forgot password sends an expiring reset link to the registered email; allow entering and confirming the new password.
+- Home shows a welcome message, current belt, student type, current package, total/used/remaining sessions, current module for Newly White Belts, and the next scheduled session.
+- Student navigation is consistently ordered: Home, Training, Schedule, Notification, Profile (NFR 3).
 
-QR payment instructions may be displayed if confirmed by the academy, but generating a QR code does not itself process or verify a payment.
+### 7.3 Training Eligibility, Packages, and Modules (FR T-01)
 
-### Enrollment Statuses
-Use the agreed statuses:
-- Pending.
-- Approved.
-- Needs Correction.
-- Rejected.
+Newly White Belts complete Modules 1–3 sequentially; completing the preceding module unlocks the next. They may access Group Classes only; Elite Training remains unavailable. Experienced Students access Regular Training and eligible students may access Elite Training (One-on-One Private Coaching). Experienced Students choose Kyorugi, Poomsae, or Mixed when enrolling. Elite eligibility criteria require client confirmation.
 
-Apply status transitions consistently in the backend and record appropriate audit information for important administrative changes.
+Every package defaults to 8 sessions plus 2 free bonus sessions (10 total).
+
+| Student/package | Class length | Fee and uniform |
+|---|---|---|
+| Newly White Belts, Module 1 (required first package) | Group, 1.5 hours | PHP 6,499, free uniform |
+| Newly White Belts, Module 2 (first renewal after completed Module 1) | Group, 1.5 hours | PHP 3,999, no uniform |
+| Newly White Belts, Module 3 (Evaluation and Belt Promotion) | Group-only pathway; duration not separately specified | Fee to be confirmed; do not invent or collect a fee |
+| Experienced Students, Group Class | 1.5 hours | PHP 5,500 with free uniform (source lists regular price PHP 6,000, “1st Module”), or PHP 3,999 without uniform |
+| Experienced Students, Elite One-on-One | 1 hour | PHP 6,000 with free uniform, or PHP 3,999 without uniform |
+| Regular renewal after one month | Applicable eligible class type | PHP 3,999 without uniform; also applies to Newly White Belts after their modules |
+
+Group Classes require at least 3 and at most 10 students per age group. Block additions beyond the maximum; handling of groups below the minimum and age-group boundaries needs confirmation. All students renew after one month. Administrator configuration may change defaults under NFR 11; rules must use validated settings consistently rather than hardcoded constants.
+
+Module content:
+
+- Module 1 — Introduction and Basic Fundamentals: meaning of Taekwondo (Tae, Kwon, Do), basic stances, commands, footwork, kicking, blocking, and punching.
+- Module 2 — Taekwondo Principles and Training Development: Five Tenets (S-M-I-P-E), basic movements and exercises, Foundation Forms #1 and #2, self-defense techniques 1–5 (three selected by coach), and Teacher's Combination Program.
+- Module 3 — Evaluation and Belt Promotion: Evaluation Test, waiting for results, promotion and awarding ceremony. The source also says entry follows completion of Modules 1 and 2 and the required evaluation; clarify evaluation ordering before implementation.
+
+### 7.4 Enrollment and Payment (FR T-01, FR AT-01, FR AP-01)
+
+Before payment, the student chooses an eligible package, class type, training frequency (twice or thrice weekly), and weekday/weekend availability. Newly White Belts choose Group only; Experienced Students may choose Group or One-on-One and their training program. Show these choices on Training and to the Administrator.
+
+1. Display the chosen package and amount due.
+2. Display the academy's GCash or QR Ph QR code.
+3. Student enters amount sent and reference number, then selects Submit Payment.
+4. Record the payment as Pending and include it in Payment History. Prevent duplicate payment reference numbers (NFR 7).
+5. Administrator checks amount and reference against the GCash/QR Ph record, then confirms or rejects after “Are you sure?”.
+6. Confirmation enrolls the student and starts the package; rejection notifies the student and does not activate the package. Notify on either result.
+
+Payment states are Pending, Confirmed, Rejected. They are separate from registration/assessment status, module progress, and package status. Do not retain the former generic enrollment states Pending/Approved/Needs Correction/Rejected as a substitute for these distinct workflows.
+
+Automatic gateway confirmation is outside the stated enhancement scope, with final scope confirmation still noted by the source. A displayed QR code does not verify settlement. No payment-proof upload is required by the revision.
+
+### 7.5 Schedule, Attendance, Renewal, and Make-Up Classes (FR S-01, FR AC-01, FR AA-01)
+
+- Administrator/coach assigns date, time, coach, and class type using the student's weekday/weekend choice and twice/thrice-weekly frequency. Students view assigned sessions, rather than directly booking arbitrary slots.
+- Administrator sees daily/weekly schedules and class counts per age group, can change/cancel sessions, and triggers student notifications. Prevent overcapacity and retain participant/coach overlap checks.
+- Attendance lists today's sessions and students. Mark Present or Absent and update remaining sessions automatically, with idempotent corrections to prevent double deduction.
+- For absence, choose Valid medical concern or Other. Approved medical absences carry over upon renewal, with no limit on the number carried; add approved carry-over to the remaining-session balance. Other/unexcused absences forfeit the missed session.
+- All students renew after one month. Show students due for renewal with a Renew action. For Newly White Belts who completed Module 1, renewal uses Module 2 at PHP 3,999 by default. Do not unlock a module solely because time elapsed or a payment was received.
+- Administrator marks modules complete, records evaluation results, and promotes belts. Record belt history and expose progress to the student. Exact renewal/payment ordering and session accounting rules are listed in section 16.
+
+### 7.6 Student Notifications and Profile (FR N-01, FR P-01)
+
+Notifications include enrollment/training and schedule confirmation, payment confirmed/rejected, session reminders, and monthly renewal reminders. Completed Module 1 reminders show Module 2 at PHP 3,999 by default, using the current approved fee configuration.
+
+Profile provides personal/contact information, editable 2x2 photo, viewable valid ID, current belt and promotion history, training records, completed white-belt modules, evaluation results, attended/missed sessions and make-up sessions, and Payment History for packages, renewals, and fees with Pending/Confirmed/Rejected status. Students may edit their own personal/contact information directly without Administrator approval (owner override 2026-11-05), subject to validation and ownership. Sensitive account/security changes require their dedicated flows; academy-managed progress and financial records remain read-only to Students. Include logout.
+
+### 7.7 Administrator Screens (FR AL-01 through FR AN-01)
+
+Administrator login uses email/password and email-link password recovery; successful login opens Home. Keep the left menu in this order on every screen: Home, Registrations, Free Trial, Students, Training, Schedule, Attendance, Payments, Notifications, Log out.
+
+| Source ID / screen | Required behavior |
+|---|---|
+| FR AH-01 Home | Clickable counts/lists: registrations awaiting review, upcoming trials, trials awaiting results, approved students not enrolled with days left, pending payments, renewals due, today's sessions. |
+| FR AR-01 Registrations | List name, student type, submitted date, status; search by name/filter by status. Detail follows registration order: type, email, personal, contact, minor guardian information, photo/ID, waiver accepted Yes/No. Set Free Trial opens the student's trial screen. |
+| FR AF-01 Free Trial | Choose student/date/time and Send Schedule by email. Approve/Reject after assessment with confirmation and result notification. Show enrollment days left. Lists: Upcoming, Waiting for result, Approved, Rejected. Automatic expiry deletion is subject to section 16. |
+| FR AS-01 Students | Enrolled-student list with name, type, belt, package, remaining sessions; name search and type filter. Detail sections: Profile (guardian/photo/ID), Belts, Attendance, Records, Payment History. Correct information on student request. |
+| FR AT-01 Training | Show approved student's choices, package durations/session counts/fees, Save fee with confirmation, monthly Renew action, module completion, evaluation and belt promotion, experienced student's class and program. Payment confirmation stays on Payments. |
+| FR AC-01 Schedule | Daily/weekly sessions; assign student/date/time/coach/type using recorded preferences; enforce group limits; change/cancel and notify. |
+| FR AA-01 Attendance | Today's rosters; Present/Absent; medical/Other reason; Approve Make-Up; automatic remaining-session updates. |
+| FR AP-01 Payments | List student, package, amount sent, reference, method, date; manually Confirm/Reject with confirmation; search all/per-student history by name/reference; display status. |
+| FR AN-01 Notifications | Automatic delivery; list sent date and Sent/Failed status; Resend action for failures. Email trial schedule, result, and enrollment deadline reminders before enrollment; deliver training/payment/session/renewal messages in-app. |
+
+Registration list statuses: New, Free Trial Scheduled, Approved, Rejected, Enrolled. “Waiting for result” is a trial list category; do not automatically invent an additional registration status. Email verification and technical session/account states remain distinct.
+
+### 7.8 Non-Functional Requirements (source NFR 1–16)
+
+| No. | Criterion | Acceptance requirement |
+|---|---|---|
+| 1 | Performance | Pages load within 3 seconds; login, registration, and schedule requests complete within 5 seconds under normal network conditions. Define workload/network measurement conditions before acceptance. |
+| 2 | Reliability | At least 99% monthly availability excluding scheduled maintenance; clear errors rather than silent failures. Demonstrate feasibility with chosen hosting; free-tier sleep is not proof this target is met. |
+| 3 | Usability | Six-step registration progress; consistent Student and Administrator menu orders; plain admin wording; “Are you sure?” before approve/reject/delete actions. Reconcile automatic deletion separately. |
+| 4 | Accessibility/readability | Readable font sizes, sufficient contrast, clear labels, responsive phone/tablet/desktop layouts. |
+| 5 | Security | Hashed passwords, 6-digit email verification, expiring reset links, idle session termination, Student/Administrator role limits. Confirm idle timeout duration. |
+| 6 | Privacy | Protect personal data, minors, photos and IDs in line with RA 10173; students see only their own data. |
+| 7 | Integrity | Required-field/email/mobile validation, unique account email and payment reference, computed age, accurate 8+2 sessions and module sequence. |
+| 8 | Capacity | Default minimum 3/maximum 10 per age group; prevent enrollment over maximum. |
+| 9 | Compatibility | Latest Chrome, Edge, Firefox, Safari; Android and iOS mobile browsers. Native Android testing alone does not satisfy this requirement. |
+| 10 | Maintainability | Separate Student and Administrator modules with documented code. |
+| 11 | Configurability | Administrator can change fees, session counts, capacity, enrollment deadline (default one week), renewal period (default one month) without code changes. Settings UI location and effects on existing packages require confirmation. |
+| 12 | Backup/recovery | Daily database backup and restoration within 24 hours after failure; owner must demonstrate backup/restore capability with selected services. |
+| 13 | Notification reliability | Verification codes, schedules, assessment results and reminders delivered within 5 minutes; code resend and failed-email retries. Track failures and allow Administrator resend. |
+| 14 | Auditability | Record user/date/time for approvals/rejections, schedule changes, package/fee changes, payment confirmations, and belt promotions. Retain compatible stronger audit controls. |
+| 15 | Payment scope | GCash/QR Ph QR display and amount/reference recording with Administrator confirmation; no automatic gateway confirmation in current scope, subject to client confirmation. |
+| 16 | Organizational | Follow assessment-before-enrollment, one-week deadline, monthly renewal, Make-Up Class Policy; train the Administrator to use the system. |
+
+Apply the approved high-fidelity mockups and sticker sheets in `docs/design/` before UI implementation. Record design gaps rather than overriding approved visuals. Cover relevant loading, empty, error, offline, timeout, retry, submitting, invalid, focused, disabled, session-restoring, expired-session and denied-access states; preserve safe input and prevent duplicate submissions. These are retained project acceptance conventions alongside the revised source.
 
 ## 8. DATABASE DESIGN PRINCIPLES
 
-Use PostgreSQL with Prisma.
+Retain PostgreSQL/Prisma and backend-controlled access. This section identifies conceptual information needs only; it does not authorize schema changes or migrations.
 
-Potential core entities:
-- User.
-- Session.
-- EmailVerificationToken or VerificationChallenge.
-- PasswordResetToken.
-- Participant.
-- ParentParticipant relationship, if needed for the chosen account model.
-- Program.
-- TrainingType.
-- Package.
-- TrainingSchedule.
-- Enrollment.
-- FreeTrialRegistration or a clearly defined trial-enrollment model.
-- PaymentRecord.
-- UploadedDocument.
-- Announcement.
-- Coach.
-- Event.
-- Merchandise, if included in the initial scope.
-- AuditLog for important administrative and security-sensitive actions.
+Model the following responsibilities without requiring one table per item:
 
-These are initial design candidates, not permission to create every table without examining the requirements.
+- Accounts, hashed credentials, verification/reset challenges, sessions with idle/absolute expiry, registration submission and assessment approval.
+- Student type, personal/contact information, computed age from date of birth, minor guardian details, waiver acceptance evidence, private 2x2 photo and ID references.
+- Free-trial schedules, attendance/assessment outcome, approval timestamp and enrollment deadline.
+- Programs, class types, package/fee versions, configurable policy defaults, sequential module completion, evaluations and belt promotion history.
+- Enrollment choices, payment submissions/status/reference uniqueness, confirmation actor/time, package activation and renewal dates.
+- Scheduled sessions, coach assignment, age-group capacities, attendance, session deductions, approved medical make-up credits and carry-over at renewal.
+- Notification delivery attempts, Sent/Failed state, retry/resend history, and key administrative audit events.
 
-Important rules:
-- Use primary keys, foreign keys, appropriate unique constraints, and indexes.
-- Store timestamps consistently and define the academy's local timezone.
-- Keep account-holder records distinct from participant records.
-- Define enrollment, trial, and payment statuses explicitly.
-- Avoid storing sensitive documents directly in database columns; store private file references and metadata.
-- Use Prisma migrations for schema changes.
-- Never edit production data manually without an approved procedure.
-- Test migrations against a development database before applying them to shared or production environments.
+Use keys, foreign keys, unique constraints, indexes and atomic operations to protect capacity, duplicate payments, package activation and balances under concurrent requests. Define enrollment/trial/payment/module states separately. Do not persist passwords, codes, tokens, or sensitive uploads in logs. Store private object references and metadata rather than file bytes in database columns.
+
+Store timestamps consistently in UTC; evaluate academy dates/schedules in Asia/Manila. Compute age from date of birth; minor age threshold, deadline boundaries and calendar-month renewal semantics need confirmation (section 16). Preserve approved fee/session policy snapshots so configuration edits do not silently rewrite historical transactions; confirm prospective-versus-current-package behavior before implementation.
+
+Use reviewed Prisma migrations and owner-run development validation before shared/production changes. Implement automatic account expiry only after deletion scope, retention, audit preservation, pending-payment races and notification handling have been agreed. Never silently replace deletion with deactivation.
 
 ## 9. REPOSITORY STRUCTURE
 
@@ -615,7 +625,7 @@ Every agent must:
 7. Never modify approved requirements, architecture, authentication decisions, or security policies without approval.
 8. Never bypass authorization or weaken validation to make a feature work.
 9. Add or update tests for meaningful changes.
-10. Run relevant tests and report actual results.
+10. Supply exact validation commands and expected results for the owner to run, wait for reported output, and report actual results. Agents do not run test suites, installs, or setup under the root AGENTS.md execution boundary.
 11. Explain assumptions, limitations, failures, and incomplete work.
 12. Ask for approval before destructive actions, significant schema changes, dependency changes with broad impact, or major architectural changes.
 13. Never expose secrets in code, logs, commits, or responses.
@@ -628,98 +638,37 @@ AI tools may propose improvements, but the group retains control over requiremen
 
 ## 12. TESTING REQUIREMENTS
 
-At minimum, test:
+The owner runs automated suites, manual checks, builds, setup and acceptance exercises. Agents supply exact commands, working directories, expected results and failure guidance, then wait for reported results. Do not claim validation passed from this specification revision.
 
-### Authentication
-- Registration with valid and invalid input.
-- Duplicate email handling.
-- Password verification.
-- OTP expiration and attempt limits.
-- Reuse of an already-consumed OTP.
-- Password-reset token expiration and single-use behavior.
-- Session expiration and logout revocation.
-- Unauthorized API requests.
-- Rate limiting.
+Acceptance coverage must trace to section 7 source IDs:
 
-### Authorization
-- Customers cannot access other customers' participant records.
-- Parents can access only linked participants.
-- Unverified or unapproved accounts cannot perform restricted actions.
-- Staff cannot perform actions outside their permissions.
-- Admin routes reject unauthorized users.
-- Private documents cannot be accessed through guessed or copied URLs without authorization.
+- Registration: all six steps and progress; required fields; matching passwords; 6-digit verification, expiry, attempt/resend limits; duplicate email; computed age; conditional guardian fields; required photo/ID and waiver checkboxes; confirmation email guidance (FR R-01, NFR 3/5/7).
+- Approval/access: assessment precedes approval; verification alone never permits login; unapproved/rejected/expired users cannot access protected functions; Student cannot access another student's records; coaches cannot acquire ungranted administrative powers (FR L-01, FR AF-01, NFR 5/6).
+- Deadline: approval timestamp, default one-week countdown, reminders, configured deadline changes, enrollment/payment completion, deadline boundary, retries, and concurrent confirmation/deletion. Do not execute destructive expiry acceptance until section 16 is resolved.
+- Training: each student type; white-belt Group-only and sequential modules; Elite eligibility; exact default prices, uniform options, durations, 8+2 sessions; Module 1 completion followed by Module 2 renewal; evaluation/promotion history (FR T-01, FR AT-01).
+- Payments: QR display for both methods, required amount/reference, unique references including concurrent submissions, Pending/Confirmed/Rejected history; confirmation prompt; reject notification; confirmation activates enrollment/package exactly once; unauthorized confirmation denied (FR AP-01).
+- Scheduling/capacity: weekday/weekend and twice/thrice-weekly preferences, coach/date/time/class details, daily/weekly views, next session on Home, full-class rejection, group counts by age group, concurrent additions at capacity, conflicts and back-to-back sessions, change/cancel notifications (FR S-01, FR AC-01).
+- Attendance/renewal: present/absent updates, safe repeated/corrected attendance, medical approval and unlimited approved carry-over at renewal, unexcused forfeiture, no duplicate make-up credits, one-month renewal and configurable periods (FR AA-01).
+- Screens/records: both menu orders, dashboard links/counts, registration search/filter and field order, enrolled-student search/filter, profile photo editing and owned personal/contact self-editing, payment search, belt/evaluation/attendance histories, logout (FR H-01, FR P-01, FR AH-01/AR-01/AS-01).
+- Notifications: verification resend; pre-enrollment emails; automatic in-app confirmations and reminders; Module 2 renewal copy; Sent/Failed state and resend; retry without duplicate business effects; five-minute delivery target (FR N-01, FR AN-01, NFR 13).
+- Security: password/reset/session lifecycle including idle timeout, ownership and permission denial, private file access, upload type/size restrictions, rate limits, safe error messages, audit coverage and integrity verification (NFR 5/6/14).
+- Operations: measured response targets, monthly uptime, responsive layouts, specified desktop/mobile browsers, Android application, daily backups and demonstrated restore within 24 hours, settings changes without code edits, Administrator training and academy acceptance (NFR 1–4/9–12/16).
+- UI states: loading, empty, invalid, submitting, offline, timeout, retry, expired/denied session and keyboard/accessibility review against approved design assets.
 
-### Free Trial
-- Every supported age group.
-- Unsupported ages.
-- Maximum trial-day limit.
-- Overall capacity limit.
-- Age-group capacity limit.
-- Unavailable schedules.
-- Duplicate submissions.
-- Cancelled or rejected registration counting policy.
-- Concurrent registrations near full capacity.
-
-### Scheduling
-- Overlapping sessions.
-- Non-overlapping sessions.
-- Back-to-back sessions.
-- Different dates.
-- Participant conflicts.
-- Instructor conflicts.
-- Recurring sessions.
-- Invalid start and end times.
-
-### General
-- Invalid request data.
-- Database errors.
-- Upload type and size restrictions.
-- Error responses that do not expose internal details.
-- Core workflows on Android and the web.
-- Usability testing and user acceptance testing with authorized academy representatives.
-
-Do not use real sensitive client data in development or testing unless there is explicit authorization and appropriate safeguards.
+Use synthetic data unless real sensitive data use is explicitly authorized with safeguards. Resolve section 16 acceptance blockers before treating affected flows as implementation-ready.
 
 ## 13. IMPLEMENTATION PRIORITIES
 
-Phase 1: Repository and foundation
-- Create the GitHub repository and monorepo.
-- Configure npm workspaces and TypeScript.
-- Write AGENTS.md and README.md.
-- Set up the Express API, Prisma, and Supabase PostgreSQL.
-- Configure environment validation and error handling.
-
-Phase 2: Authentication and security
-- Implement registration and Argon2id hashing.
-- Implement email verification and password recovery.
-- Implement server-managed sessions.
-- Implement role checks, ownership checks, and account approval rules.
-- Add security tests.
-
-Phase 3: Core academy features
-- Participant and parent/guardian management.
-- Programs, training types, packages, and schedules.
-- Enrollment and status workflows.
-- Free-trial algorithm.
-- Schedule conflict detection.
-- Payment-status tracking.
-
-Phase 4: Client applications
-- Public website.
-- Admin dashboard.
-- Android mobile application.
-- API integration and protected navigation.
-
-Phase 5: Verification and deployment
-- Automated and manual testing.
-- Security and permission checks.
-- User acceptance testing.
-- Deployment using suitable free-tier services where permitted.
-- Document known limitations and migration steps before real-world use.
+1. Reconcile this revised master specification with affected feature specs/plans/tasks, security and architecture notes, existing role mappings, and approved design screens. Obtain decisions for section 16; do not overwrite completed work or migrate data implicitly.
+2. Complete six-step registration, verification, private uploads, waiver/guardian safeguards, Administrator registration review, free-trial email scheduling and assessment decisions.
+3. Implement the approved access path for enrollment, configurable deadline tracking, GCash/QR Ph submissions, manual payment decisions and atomic enrollment/package activation. Enable expiry deletion only after its safeguards are approved.
+4. Implement student-type eligibility, package prices, sequential modules, admin-assigned schedules, capacities, attendance, monthly renewal, medical carry-over, evaluations and belt promotion.
+5. Complete Student and Administrator screens, notification reliability/resend, audit events, policy configuration, backup/recovery procedures and Administrator training.
+6. Owner performs automated/manual acceptance, security and device/browser checks, operational target measurements and deployment review. Record limitations of selected free-tier services rather than claiming they meet unmeasured targets.
 
 ## 14. FINAL RULES FOR DEVELOPMENT
 
-Treat this document as the approved initial technical baseline.
+Treat this document as the revised business requirements and retained technical baseline, subject to the explicit implementation gates in section 16.
 
 Before implementing features:
 1. Inspect the repository and existing instructions.
@@ -727,7 +676,7 @@ Before implementing features:
 3. Propose a small implementation plan.
 4. Implement the smallest complete solution.
 5. Add or update tests.
-6. Run the relevant checks.
+6. Provide owner-run check commands and expected results; wait for the owner's results where validation is required.
 7. Summarize modified files, test results, and remaining issues.
 
 Do not implement every feature in one large change. Build incrementally and verify each layer before integrating the next.
@@ -738,7 +687,7 @@ Prioritize correctness, maintainability, access control, and successful core wor
 
 ## 15. ALGORITHM SPECIFICATIONS
 
-The system incorporates three core algorithms required for academic evaluation in Algorithms & Complexity and Information Assurance & Security.
+The previous baseline specified three academic algorithms. The revised requirements do not mandate these algorithms. Retain compatible work as technical context only; academic deliverable requirements need confirmation. They must not override the revised student/admin workflows or add analytics to release scope.
 
 ---
 
@@ -747,12 +696,12 @@ The system incorporates three core algorithms required for academic evaluation i
 - **Feature**: Training Schedule Recommendation
 - **Algorithm**: Cardinality-Constrained Weighted Interval Scheduling
 - **Paradigm**: Dynamic Programming with Binary Search
-- **Priority**: Primary / Required
+- **Status**: Retained academic design; release requirement unconfirmed.
 - **Time Complexity**: $O(n \log n + nq)$, simplified to $O(n \log n)$ because cardinality $q \in \{2, 3\}$ is a small constant.
 - **Space Complexity**: $O(nq)$, simplified to $O(n)$ where $n$ is the number of candidate training sessions.
 
 #### Purpose
-Recommend the optimal combination of weekly training sessions based on participant preferences while strictly preventing schedule overlaps.
+Provide an optional recommendation to the Administrator/coach while assigning schedules. Students specify weekday/weekend availability and twice/thrice-weekly frequency; the Administrator/coach remains responsible for the assignment. Preference scores are an internal algorithm input, not a newly required student form. Filter by student eligibility, availability, class duration, capacity and coach conflicts before scoring.
 
 The participant selects a desired weekly training frequency of twice ($q = 2$) or thrice ($q = 3$) per week. The algorithm identifies exactly the requested number of non-overlapping sessions that maximizes the cumulative preference score.
 
@@ -791,71 +740,32 @@ The participant selects a desired weekly training frequency of twice ($q = 2$) o
 
 ---
 
-### Algorithm 2: Trial Conversion & Student Churn Tracking
+### Algorithm 2: Registration and Enrollment Lifecycle Tracking
 
-- **Feature**: Participant Lifecycle Monitoring and Trial Conversion Tracking
-- **Algorithm**: Finite State Machine (FSM) Lifecycle Tracker
-- **Paradigm**: Finite State Machine / Deterministic State Transition Modeling
-- **Priority**: Secondary / Required
-- **Time Complexity**: $O(1)$ per state transition using a fixed transition lookup table.
-- **Space Complexity**: $O(1)$ per transition, excluding persistent event log history.
+Retain an FSM approach with O(1) transition checks for fixed state sets, but replace the former two-day trial entitlement, direct registration-to-enrollment bypass, 14-day trial inactivity rule and churn analytics. Those rules are not supported by the revised requirements.
 
-#### Purpose
-Track each participant's lifecycle from initial registration through free trial participation, regular training enrollment, inactivity thresholds, and potential churn/withdrawal.
-
-The FSM guarantees that participants move exclusively through valid, business-approved lifecycle states, while collecting telemetry for cohort conversion metrics and rule-based churn monitoring.
-
-#### Lifecycle States
-- `REGISTERED`: Profile created; no trial or enrollment booked yet.
-- `TRIAL_SCHEDULED`: Free trial booking submitted and approved.
-- `TRIAL_ACTIVE`: Attended at least one trial session (with entitlement remaining).
-- `TRIAL_COMPLETED`: Completed trial entitlement (maximum 2 trial days) or trial period closed.
-- `ENROLLED`: Regular paid training enrollment confirmed and active.
-- `INACTIVE`: No active enrollment exceeding configured academy inactivity threshold (e.g., 30 days without renewal).
-- `WITHDRAWN`: Formally withdrawn or participation concluded.
-
-#### State Transition Table
-
-| Current State | Valid Trigger Event | Next State | Guard Condition / Business Rule |
+| Current registration state | Event | Next state | Guard/effect |
 |---|---|---|---|
-| `REGISTERED` | `TRIAL_BOOKED` | `TRIAL_SCHEDULED` | Trial eligibility confirmed (participant has $\le 2$ trial allocations) |
-| `REGISTERED` | `ENROLLMENT_APPROVED` | `ENROLLED` | Academy administrative approval & fee confirmation |
-| `TRIAL_SCHEDULED` | `FIRST_ATTENDANCE` | `TRIAL_ACTIVE` | Attendance check-in recorded by coach/staff |
-| `TRIAL_ACTIVE` | `TRIAL_FINISHED` | `TRIAL_COMPLETED` | Trial session entitlement completed |
-| `TRIAL_COMPLETED` | `ENROLLMENT_APPROVED` | `ENROLLED` | Regular enrollment submitted and approved |
-| `REGISTERED` | `INACTIVITY_TIMEOUT` | `INACTIVE` | Profile idle without booking for $\ge 30$ days |
-| `TRIAL_COMPLETED` | `INACTIVITY_TIMEOUT` | `INACTIVE` | No enrollment within 14 days of trial completion |
-| `ENROLLED` | `MEMBERSHIP_EXPIRED` | `INACTIVE` | Training package concluded without renewal |
-| `INACTIVE` | `ENROLLMENT_APPROVED` | `ENROLLED` | Account reactivated via approved new enrollment |
-| Any non-withdrawn | `WITHDRAWAL_CONFIRMED` | `WITHDRAWN` | Guardian or admin formal cancellation confirmed |
+| New | Administrator sends free-trial schedule | Free Trial Scheduled | Registration, required documents and waiver submitted; email schedule. |
+| Free Trial Scheduled | Administrator records assessment approval | Approved | Assessment completed; confirm action; record approval time/default one-week deadline; notify. |
+| Free Trial Scheduled | Administrator records assessment rejection | Rejected | Assessment completed; confirm action; notify. |
+| Approved | Administrator confirms package payment | Enrolled | Valid eligible package and payment; atomically confirm payment, activate package and update registration. Deadline race policy requires confirmation. |
+| Approved | Enrollment deadline expires without enrollment | Account deleted as required by source | Destructive action, not an added registration status; enable only after section 16 safeguards are approved. |
 
-#### Metrics & Analytics
-- **Trial Conversion Rate**:
-  $$\text{Conversion Rate} = \left(\frac{\text{Trial participants converted to regular enrollment in cohort}}{\text{Total eligible trial participants in cohort}}\right) \times 100\%$$
-- **Rule-Based Churn Risk Indicators**:
-  - Flag 1: Trial completed $\ge 7$ days ago without regular enrollment submission.
-  - Flag 2: Active enrollment expiration in $\le 7$ days without renewal intent.
-  - Flag 3: Unexcused absences $\ge 3$ consecutive sessions.
-
-#### Rules and Constraints
-- Transitions are deterministic; invalid transition attempts are rejected with `INVALID_LIFECYCLE_TRANSITION` and logged.
-- Duplicate event deliveries are idempotent and do not trigger duplicate transitions.
-- Participant lifecycle states are strictly separated from financial payment states (`PENDING`, `PAID`, `OVERDUE`).
-- Transition events are persisted atomically within database transactions alongside the cryptographic audit log.
+Trial attendance and “Waiting for result” may be tracked separately without changing the published registration statuses. Payment remains Pending/Confirmed/Rejected. Module completion and monthly renewal remain distinct from registration; do not mark an enrolled student unapproved merely because a package expires. Invalid/duplicate events must not double-activate a package, deduct sessions twice or duplicate make-up credits. Keep important business mutations and audit records atomic. Enrollment access and deletion/renewal rules are gated by section 16.
 
 ---
-
 ### Algorithm 3: Digital Document Collection & Automated Image Quality Screening
 
 - **Feature**: Digital Document Collection & Secure Screening
 - **Algorithm**: Magic Byte Signature & MIME Validation with Quality Pre-Screening
 - **Paradigm**: Stream-based Header Inspection & Structural Binary Validation (Fixed-Offset Byte Verification)
-- **Priority**: Secondary / Required
-- **Time Complexity**: $O(k)$ where $k \le 32$ is the inspected header byte window, executing in constant $O(1)$ time prior to full file streaming.
+- **Status**: Retained technical screening design; revised source requires private 2x2 photo and valid ID uploads.
+- **Time Complexity**: Signature matching uses a bounded header. JPEG dimension parsing scans marker segments; full-file checksumming is O(file size). Do not claim the entire upload pipeline is O(1).
 - **Space Complexity**: $O(1)$ buffer space (inspects initial binary chunk without buffering full multi-megabyte payloads in memory).
 
 #### Purpose
-Secure the document collection workflow (IDs, birth certificates, medical clearances, and photo uploads) against malicious file uploads (e.g. executable scripts, PHP/JS shells disguised with image extensions), confirm authentic MIME types via magic numbers, and reject unreadable or inadequate uploads before storage in private Supabase buckets.
+Secure the required valid-ID and 2x2-photo collection workflow against malicious file uploads (e.g. executable scripts, PHP/JS shells disguised with image extensions), confirm authentic MIME types via magic numbers, and reject unreadable or inadequate uploads before storage in private Supabase buckets.
 
 #### Inputs
 - Initial binary byte stream/buffer of uploaded file (first 16–32 bytes).
@@ -874,7 +784,7 @@ Secure the document collection workflow (IDs, birth certificates, medical cleara
    - Minimum file size check: $\text{size} \ge 5\text{ KB}$ (rejects empty or corrupt stubs).
    - Maximum file size check: $\text{size} \le 5\text{ MB}$ (prevents memory and storage exhaustion).
 4. **Header Dimension & Geometry Pre-Screening**:
-   Parse the image header chunks (e.g., JPEG SOF0/SOF2 marker or PNG IHDR chunk) to extract pixel width and height without decompressing the full bitmap:
+   Parse image structure (JPEG SOF markers or PNG IHDR) to extract dimensions; JPEG dimensions need not be within the first 32 bytes. Bound parser work, reject malformed files and separately validate complete decoding; a valid signature alone does not establish image safety or readability:
    - Enforce minimum resolution (e.g., $400 \times 400$ px for ID/waiver legibility).
    - Reject malformed or truncated image headers with `CORRUPTED_IMAGE_HEADER`.
 5. **Path & Filename Sanitization**:
@@ -892,5 +802,19 @@ Secure the document collection workflow (IDs, birth certificates, medical cleara
 - All stored documents reside in private, non-public buckets; retrieval is permitted exclusively via signed, time-limited URLs generated by the backend after verifying ownership/RBAC permissions.
 
 ---
+
+## 16. REQUIRED CLARIFICATIONS AND DOWNSTREAM ALIGNMENT
+
+The revised document is authoritative for the changed business requirements, but contains gaps and conflicting statements. The following are explicit implementation gates, not invented policy:
+
+1. **First login and enrollment access — resolved 2026-11-05:** Verified assessment-approved Students have the same Student screens and navigation before and after enrollment. Account approval is separate from registration, payment and package status. Unapproved accounts cannot log in; equal navigation does not activate unpaid training entitlements.
+2. **One-week deletion:** Confirm exact deadline start/boundary, timezone, whether enrollment requires confirmed payment before expiry, and treatment of an on-time Pending payment awaiting Administrator action. Define deletion scope (account, profile, documents and pending records), retention/anonymization and audit preservation, failure recovery and notice. FR AF-01 automatic deletion must be reconciled with NFR 3 confirmation before deletion. Do not substitute deactivation or enable destructive deletion without these decisions.
+3. **Minor/guardian rules:** Confirm minor-age threshold and age calculation date, authorized consent provider, and how guardian consent is collected before storing minor data when the source places waiver acceptance last. Guardian relationship choices alone do not establish legal consent authority. Confirm whether separate guardian logins from the old baseline remain desired.
+4. **Modules and eligibility:** Confirm Module 3 fee, duration/session entitlement and evaluation ordering; white-belt completion criteria; transition into Experienced Student classification; Elite eligibility. Clarify the experienced Group fee wording “regular price PHP 6,000, 1st Module”. Do not apply white-belt module locks to Experienced Students without approval.
+5. **Renewal and balances:** Confirm calendar month versus fixed days, expiry time, treatment of unused bonus sessions, medical evidence/approval timing, deduction/reversal rules, and whether Renew waits for confirmed payment. Medical carry-over has no count limit; unexcused absences forfeit sessions. Define how configured counts/periods affect existing paid packages.
+6. **Scheduling/capacity:** Confirm age-group bands, minimum-group-size behavior, free-trial capacity/duration and rescheduling/no-show rules. The old two-trial-day allowance is superseded; no new numeric trial entitlement is specified. Confirm coach credentials and delegated permissions.
+7. **Settings and notifications:** Confirm settings location without changing the mandated menu order, permitted setting ranges, fee-change effective dates, payment reference uniqueness/normalization across methods, reminder cadence, retry limits and resend behavior. Idle-session policy was resolved on 2026-11-05 as specified in section 4. All other settings/notification questions remain open.
+8. **Delivery/platform feasibility:** Confirm responsive student web access needed for Android/iOS browser compatibility alongside the retained native Android app; no native iOS app is specified. Agree measurement conditions and hosting/backup arrangements for 99% availability, response/delivery targets, daily backups and 24-hour recovery. No plan upgrade or architecture replacement is authorized by this document revision.
+9. **Downstream review:** Existing `specs/001-user-login/` artifacts, role/guardian architecture, audit documentation, README, design mockups and academic algorithm notes must be reviewed against this baseline before their affected behavior is implemented. This revision does not update those artifacts or certify existing code as compliant. Public content/merchandise and churn analytics from the older baseline are not required by the revised source; confirm any retained scope separately.
 
 END OF PROJECT TECHNICAL SPECIFICATION

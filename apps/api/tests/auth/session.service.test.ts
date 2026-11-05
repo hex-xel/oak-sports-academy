@@ -12,7 +12,7 @@ vi.mock("../../src/lib/prisma.js", () => ({
 import { createSession, revokeAllSessions, revokeSession, verifySession } from "../../src/modules/auth/session.service.js";
 
 const user = { id: "00000000-0000-4000-8000-000000000001", email: "synthetic@example.test",
-  displayName: null, role: "CUSTOMER", status: "ACTIVE" };
+  displayName: null, role: "STUDENT", status: "ACTIVE" };
 const token = "a".repeat(64);
 const hash = createHash("sha256").update(token).digest("hex");
 const expiresAt = new Date("2026-11-03T22:00:00.000Z");

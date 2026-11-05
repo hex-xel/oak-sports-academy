@@ -6,7 +6,25 @@
 
 ## Summary
 
-Add customer authentication to the monorepo's first client: an Expo (React Native) app
+**2026-11-05 target:** owner-approved STUDENT migration and equal approved/enrolled
+student navigation supersede legacy customer/staff business-role assumptions below.
+Administrator web transport remains separate; legacy STAFF requires inventory and no
+implicit access. T063–T065 implement forward migrations, 30-minute server-side idle
+expiry with an eight-hour cap, and removal of runtime self-profile editing. Existing
+applied migrations and completed task evidence remain historical, not rewritten.
+T027 typecheck and 15 focused tests passed owner execution; T031 database guarantees
+remain pending. See [decision record](../../docs/architecture/login-requirements-alignment.md).
+
+Classify protected operations server-side: only successful user-initiated operations
+renew idle activity atomically. Session restoration and background polling do not.
+Preserve existing rejection behavior and never revive an expired/revoked session.
+T029/T030 must use this classification; T031 validates deadlines and concurrent access.
+Home content/navigation and email-link recovery are separate feature dependencies.
+Measure NFR 1 targets (three-second pages/five-second login requests) under agreed
+network/workload conditions. Responsive Student web delivery for NFR 9 needs scope
+confirmation; no new frontend or architecture is authorized by this document update.
+
+Add student authentication to the monorepo's first client: an Expo (React Native) app
 with a native login screen, SecureStore token persistence, and an auth context that
 validates and restores the session on launch. The Express API gains an auth module backed by Prisma
 (User, Session, SignInAttempt) using Argon2id and opaque bearer tokens. No web client is
@@ -67,7 +85,7 @@ in §4–§6:
 
 ## Client Architecture and the WebView Question
 
-The customer web app arrives next semester, so the temptation is to build everything in
+The student web app arrives next semester, so the temptation is to build everything in
 WebView now and reuse it. That conflicts with two approved rules:
 
 1. §2 says the mobile app must be a genuine native app, not a WebView-only wrapper.
@@ -82,7 +100,7 @@ separate decision with these constraints recorded now:
 - A WebView page that needs the session must receive a **short-lived, single-use handoff
   code** exchanged server-side for a cookie; never the bearer token in a URL.
 - Anything built for WebView must be responsive from 360 dp and share no browser-only
-  APIs, so the same routes can be exposed as the customer website later.
+  APIs, so the same routes can be exposed as the student website later.
 - Adopting WebView for any *auth* screen requires an amendment to `specifications.md` §4;
   it must not be slipped in during implementation.
 
@@ -109,7 +127,7 @@ apps/api/
 ├── prisma/
 │   ├── schema.prisma            # User, Session, SignInAttempt
 │   ├── migrations/
-│   └── seed.ts                  # accounts for customer scenarios
+│   └── seed.ts                  # accounts for student scenarios
 ├── src/
 │   ├── config/env.ts
 │   ├── lib/prisma.ts
@@ -133,7 +151,7 @@ apps/mobile/
 ├── app/
 │   ├── _layout.tsx              # providers + auth gate
 │   ├── login.tsx
-│   ├── index.tsx                # customer home (protected)
+│   ├── index.tsx                # student home (protected)
 │   └── forbidden.tsx
 ├── components/
 │   ├── TextField.tsx
@@ -171,7 +189,7 @@ web client feature; nothing in this feature should assume a browser exists.
 
 ## Approved T016 alignment — 2026-11-02
 
-Only verified ACTIVE customers may sign in. PENDING_APPROVAL means approval has not
+Only verified ACTIVE students may sign in. PENDING_APPROVAL means approval has not
 yet been granted; approval changes status to ACTIVE in a separate feature. On protected
 requests recheck current status, identity, permissions, and ownership.
 

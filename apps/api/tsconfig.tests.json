@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "noEmit": true,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "DOM"],
+    /* Vite/Rollup declaration compatibility differs under exactOptionalPropertyTypes.
+       Skip dependency .d.ts checks only; project .ts strict checks remain enabled. */
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts", "prisma/**/*.ts", "tests/auth/login*.ts", "tests/auth/auth.schemas.test.ts", "tests/contracts/**/*.ts", "tests/helpers/**/*.ts", "tests/mobile/**/*.ts", "tests/security/**/*.test.ts", "vitest.config.ts"],
+  "exclude": ["node_modules", "dist"]
+}
