@@ -3,6 +3,7 @@ import helmet from "helmet";
 import { z } from "zod";
 import { createRateLimiters, type RateLimiters } from "./middleware/rate-limit.js";
 import { errorHandler } from "./middleware/error-handler.js";
+import { registerAuthRoutes } from "./modules/auth/auth.routes.js";
 
 /** Server-owned configuration; no runtime environment/database access on import. */
 export type AppOptions = Readonly<{ trustProxy?: false | string[]; production?: boolean }>;
@@ -21,7 +22,7 @@ export type AppRuntime = Readonly<{
  * @returns App, /api/v1 router and limiter cleanup; call close at teardown.
  * @throws Framework/configuration errors; never pass client-controlled options.
  * @remarks Global quota precedes bounded JSON parsing; Helmet covers parser/404 errors.
- * T041 registers auth routes on router using the returned sensitive limiters. Protected
+ * Auth routes use the application's sensitive limiters and load their dependencies on request. Protected
  * work must use requireAuth's server-selected activity mode; no heartbeat is mounted.
  */
 export function createApp(options: AppOptions = {}): AppRuntime {
@@ -52,6 +53,7 @@ export function createApp(options: AppOptions = {}): AppRuntime {
       res.json({ status: "ok" });
     } catch (error) { next(error); }
   });
+  registerAuthRoutes(router, rateLimiters);
   app.use("/api/v1", router);
   app.use((_req, res) => { res.status(404).json({ message: "Resource not found." }); });
   app.use(errorHandler);

@@ -56,14 +56,23 @@ export type ApiClientOptions = Readonly<{
  * in the timeout. A response remains unknown until the caller validates it at runtime.
  */
 export function createApiClient(options: ApiClientOptions) {
+  let unauthorized: (() => () => Promise<void>) | undefined;
   const timeoutMs = options.timeoutMs ?? 10_000;
   if (!Number.isInteger(timeoutMs) || timeoutMs < 1_000 || timeoutMs > 30_000) throw new ApiClientError("API_CONFIGURATION");
   async function request(path: string, method: "GET" | "POST", body?: unknown, authenticated = true): Promise<unknown> {
     if (!/^\/[a-zA-Z0-9/_-]+$/.test(path)) throw new ApiClientError("API_CONFIGURATION");
     const base = options.baseUrl();
+    const rejectSession = authenticated ? unauthorized?.() : undefined;
+    const invalidate = () => {
+      // Cleanup may queue behind restoration, which is awaiting this request.
+      // Hide identity synchronously, but never await that queue from transport.
+      void rejectSession?.().catch(() => { /* Auth state exposes secure cleanup failure. */ });
+    };
     const token = authenticated ? await (options.readToken ?? getSessionToken)() : null;
-    if (authenticated && !token) throw new ApiClientError("UNAUTHENTICATED", 401);
-    if (token && !/^[A-Za-z0-9._~+/-]+=*$/.test(token)) throw new ApiClientError("UNAUTHENTICATED", 401);
+    if (authenticated && (!token || !/^[A-Za-z0-9._~+/-]+=*$/.test(token))) {
+      invalidate();
+      throw new ApiClientError("UNAUTHENTICATED", 401);
+    }
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const deadline = new Promise<never>((_resolve, reject) => {
@@ -81,6 +90,9 @@ export function createApiClient(options: ApiClientOptions) {
         },
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       });
+      if (path === "/auth/logout" && response.ok && response.status !== 204) {
+        throw new ApiClientError("INVALID_RESPONSE", response.status);
+      }
       let decoded: unknown;
       if (response.status !== 204) {
         try { decoded = await response.json(); }
@@ -97,11 +109,17 @@ export function createApiClient(options: ApiClientOptions) {
     };
     try { return await Promise.race([run(), deadline]); }
     catch (error) {
+      if (error instanceof ApiClientError && error.status === 401) invalidate();
       if (error instanceof ApiClientError) throw error;
       throw new ApiClientError("NETWORK_ERROR");
     } finally { clearTimeout(timer); }
   }
   return {
+    /** Registers a provider-owned request-generation capture; cleanup only removes this registration. */
+    setUnauthorizedHandler: (handler: () => () => Promise<void>) => {
+      unauthorized = handler;
+      return () => { if (unauthorized === handler) unauthorized = undefined; };
+    },
     request,
     login: (credentials: LoginRequest) => request("/auth/login", "POST", {
       email: credentials.email, password: credentials.password,

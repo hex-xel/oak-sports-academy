@@ -1,28 +1,28 @@
-# Graph Report - oak-sports-academy  (2026-11-05)
+# Graph Report - oak-sports-academy  (2026-11-06)
 
 ## Corpus Check
-- 224 files · ~106,567 words
+- 237 files · ~123,571 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 19 file(s) not represented in the graph (top: (none) 13, .example 4, .toml 1)
 
 ## Summary
-- 1248 nodes · 2150 edges · 131 communities (59 shown, 72 thin omitted)
-- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 31 edges (avg confidence: 0.9)
+- 1348 nodes · 2334 edges · 144 communities (70 shown, 74 thin omitted)
+- Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 32 edges (avg confidence: 0.91)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `a53ec786`
+- Built from commit: `4f40b0a4`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - OAK SPORTS ACADEMY TRAINING REGISTRATION AND MANAGEMENT SYSTEM
 - api/package.json
-- mobile/package.json
+- dependencies
 - Changelog
 - Tasks: User Login (Mobile)
 - 20261102090000_init_auth/migration.sql
-- vitest
+- prisma.ts
 - Algorithm 1: Cardinality-Constrained Weighted Interval Scheduling (CC-WIS)
 - Feature Specification: User Login (Mobile)
 - compilerOptions
@@ -31,27 +31,27 @@
 - compilerOptions
 - expo
 - shared/package.json
-- index.ts
+- ApiError
 - package.json
 - 4. AUTHENTICATION AND SECURITY LIBRARIES
-- app.ts
+- require-permission.ts
 - Oak Sports Academy Training Registration and Management System
 - How specifications are organized in this project
-- index.ts
-- T017 foundational security tests
+- audit.service.ts
+- app.ts
 - Changelog
 - Supabase
 - Supabase
 - Changelog
 - Changelog
 - Data Model: User Login
-- ApiError
+- Native Student authentication
 - 2. FINAL TECHNOLOGY STACK
 - 1. Information Assurance & Security (CIA Triad)
 - Section Definitions
 - Section Definitions
 - Authentication data layer
-- Login requirements alignment — 2026-11-05
+- Deferred content WebView handoff
 - Supabase Postgres Best Practices
 - Supabase Postgres Best Practices
 - Use tsvector for Full-Text Search
@@ -118,7 +118,7 @@
 - .qwen/skills/supabase-postgres-best-practices/references/security-rls-basics.md
 - .qwen/skills/supabase-postgres-best-practices/references/security-rls-performance.md
 - .qwen/skills/supabase-postgres-best-practices/references/_template.md
-- react
+- login.tsx
 - 7. INITIAL RELEASE FEATURES
 - password.service.ts
 - 3. WHAT THE TEAM WILL IMPLEMENT
@@ -129,58 +129,69 @@
 - shared/tsconfig.json
 - Quickstart: User Login (Mobile)
 - Implementation Plan: User Login (Mobile)
-- RequirementsStep.tsx
+- plan.md
+- react
 - RegistrationWizard.tsx
+- ContactStep.tsx
+- index.ts
 - vitest
-- require-permission.ts
-- RegistrationWizard.tsx
 - tsconfig.tests.json
 - CredentialsStep.tsx
 - provision-test-db.sql
-- PersonalStep.tsx
+- ADR-0001: Server-managed opaque sessions and database authorization
+- native-check.mjs
 - Algorithm 1: Cardinality-Constrained Weighted Interval Scheduling (CC-WIS)
+- Authentication implementation checkpoints
 - error-handler.ts
+- RegistrationWizard.tsx
+- auth.controller.ts
+- mobile/package.json
+- metro.config.js
+- cleanup-readme-docs.mjs
+- scripts
+- Development guide
+- T058 authentication security review
 
 ## God Nodes (most connected - your core abstractions)
 1. `react` - 34 edges
-2. `ApiError` - 32 edges
-3. `vitest` - 29 edges
-4. `Oak Sports Academy Training Registration and Management System` - 28 edges
+2. `vitest` - 32 edges
+3. `ApiError` - 32 edges
+4. `Authentication data layer` - 32 edges
 5. `react-native` - 27 edges
 6. `Typography` - 25 edges
-7. `Spacing` - 24 edges
-8. `Authentication data layer` - 24 edges
+7. `Authentication implementation checkpoints` - 25 edges
+8. `Spacing` - 24 edges
 9. `SessionContextError` - 22 edges
 10. `Colors` - 20 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `T063 Student role alignment (owner validation pending)` --references--> `withSession()`  [INFERRED]
-  docs/architecture/auth-data.md → apps/api/src/lib/prisma.ts
+- `Authorization and database trust` --references--> `withSession()`  [INFERRED]
+  docs/architecture/auth.md → apps/api/src/lib/prisma.ts
 - `Approved T016 alignment — 2026-11-02` --references--> `requirePermission()`  [INFERRED]
   specs/001-user-login/plan.md → apps/api/src/middleware/require-permission.ts
+- `T063 Student role alignment (owner validation pending)` --references--> `withSession()`  [INFERRED]
+  docs/architecture/auth-data.md → apps/api/src/lib/prisma.ts
 - `Entity notes` --references--> `tokenHash()`  [INFERRED]
   specs/001-user-login/data-model.md → apps/api/src/modules/auth/session.service.ts
 - `Validation rules` --references--> `tokenHash()`  [INFERRED]
   specs/001-user-login/data-model.md → apps/api/src/modules/auth/session.service.ts
-- `Phase 3: Foundational Backend (Blocking Prerequisites)` --references--> `tokenHash()`  [INFERRED]
-  specs/001-user-login/tasks.md → apps/api/src/modules/auth/session.service.ts
 
 ## Import Cycles
 - None detected.
 
-## Communities (131 total, 72 thin omitted)
+## Communities (144 total, 74 thin omitted)
 
 ### Community 0 - "OAK SPORTS ACADEMY TRAINING REGISTRATION AND MANAGEMENT SYSTEM"
-Cohesion: 0.14
+Cohesion: 0.15
 Nodes (13): 10. GIT AND GITHUB WORKFLOW, 11. AGENTS.MD AND AI CODING RULES, 12. TESTING REQUIREMENTS, 13. IMPLEMENTATION PRIORITIES, 14. FINAL RULES FOR DEVELOPMENT, 16. REQUIRED CLARIFICATIONS AND DOWNSTREAM ALIGNMENT, 1. PROJECT OVERVIEW, 6. ROLES AND AUTHORIZATION (+5 more)
 
 ### Community 1 - "api/package.json"
 Cohesion: 0.06
 Nodes (41): dependencies, argon2@^0.41.0, express@^4.21.0, express-rate-limit@^7.4.0, helmet@^8.0.0, @prisma/client@^6.0.0, devDependencies, @oak/shared@* (+33 more)
 
-### Community 2 - "mobile/package.json"
-Cohesion: 0.06
-Nodes (36): config, { getDefaultConfig }, path, sharedSource, dependencies, expo@~58.0.22, expo-constants@~58.0.14, expo-router@~58.0.29 (+28 more)
+### Community 2 - "dependencies"
+Cohesion: 0.14
+Nodes (14): dependencies, expo-constants@~58.0.14, expo-router@~58.0.29, expo-secure-store@~58.0.2, expo-splash-screen@~58.0.12, expo-status-bar@~58.0.4, @expo/vector-icons@^15.0.2, @oak/shared@* (+6 more)
 
 ### Community 3 - "Changelog"
 Cohesion: 0.10
@@ -194,9 +205,9 @@ Nodes (13): Dependencies & Execution Order, Format: `[ID] [P?] [Story] Descripti
 Cohesion: 0.08
 Nodes (28): audit_logs_currentHash_key, audit_logs_previousHash_key, audit_logs_timestamp_idx, public.audit_logs, public.sessions, public.sign_in_attempts, public.users, sessions_expiresAt_idx (+20 more)
 
-### Community 6 - "vitest"
-Cohesion: 0.05
-Nodes (66): isSessionRejection(), prisma, runtimeGlobal, SessionIdentity, withSession(), SessionContextError, AuthRouteOptions, AuthWorkContext (+58 more)
+### Community 6 - "prisma.ts"
+Cohesion: 0.10
+Nodes (23): isSessionRejection(), prisma, runtimeGlobal, SessionIdentity, withSession(), SessionContextError, CreatedSession, createSession() (+15 more)
 
 ### Community 7 - "Algorithm 1: Cardinality-Constrained Weighted Interval Scheduling (CC-WIS)"
 Cohesion: 0.25
@@ -230,9 +241,9 @@ Nodes (12): package, expo, android, extra, name, orientation, platforms, plugins
 Cohesion: 0.18
 Nodes (11): devDependencies, typescript@^5.6.0, exports, typescript, main, name, private, scripts (+3 more)
 
-### Community 15 - "index.ts"
-Cohesion: 0.11
-Nodes (30): fixture(), response, native, RootLayout(), loginMessage(), retryDeadline(), useLogin(), submit() (+22 more)
+### Community 15 - "ApiError"
+Cohesion: 0.16
+Nodes (13): ApiError, checkEligibility(), CredentialRow, login(), lookup(), QueryClient, recordAttempt(), SessionMetadata (+5 more)
 
 ### Community 16 - "package.json"
 Cohesion: 0.20
@@ -242,25 +253,25 @@ Nodes (9): engines, node, name, private, scripts, dev, test, version (+1 more)
 Cohesion: 0.20
 Nodes (10): 1. Confidentiality (Data Privacy & Access Control), 2. Integrity (Data Accuracy & Tamper Resistance), 3. Availability (Operational Resilience & Reliability), 4. AUTHENTICATION AND SECURITY LIBRARIES, Cryptographic Append-Only Event Logging (SHA-256 Hash Chain), Information Assurance & Security Architecture (The CIA Triad), OTP and Password Reset Security, Password Hashing Algorithm: Argon2id (+2 more)
 
-### Community 18 - "app.ts"
-Cohesion: 0.21
-Nodes (11): AppOptions, checkProxyPolicy(), createRateLimiters(), create(), normalizedEmail(), RateLimiters, registerAuthRoutes(), loginEmailSchema (+3 more)
+### Community 18 - "require-permission.ts"
+Cohesion: 0.16
+Nodes (20): requireAuth(), runGate(), requireOwnership(), Express, PermissionDenial, PermissionGateOptions, PermissionIdentity, Request (+12 more)
 
 ### Community 19 - "Oak Sports Academy Training Registration and Management System"
-Cohesion: 0.07
-Nodes (29): Audit checkpoint deferred; T030 application wiring, Development workflow, Follow-up: remove unused STAFF (current checkpoint), Initial team roles, Oak Sports Academy Training Registration and Management System, Original rename checkpoint (completed owner validation), Planned technology stack, Project goals (+21 more)
+Cohesion: 0.25
+Nodes (8): Development workflow, Implemented authentication modules, Initial team roles, Oak Sports Academy Training Registration and Management System, Planned technology stack, Project goals, Related project material, Repository layout
 
 ### Community 20 - "How specifications are organized in this project"
 Cohesion: 0.33
 Nodes (5): 1. `specifications.md` (repository root), 2. `specs/<NNN-feature>/` (this folder), Current features, How specifications are organized in this project, Where the tooling fits
 
-### Community 21 - "index.ts"
-Cohesion: 0.13
-Nodes (20): error, legacyRole, passwordEcho, rawDate, request, response, roleClaim, session (+12 more)
+### Community 21 - "audit.service.ts"
+Cohesion: 0.12
+Nodes (23): appendAudit(), AuditEvent, AuditVerificationResult, canonical(), eventSchema, genesis, hashAuditPayload(), recordHash() (+15 more)
 
-### Community 23 - "T017 foundational security tests"
-Cohesion: 0.40
-Nodes (4): Coverage and validation, Implementation interfaces exercised by the tests, T017 foundational security tests, T031 database fixture contract
+### Community 23 - "app.ts"
+Cohesion: 0.13
+Nodes (19): AppOptions, AppRuntime, createApp(), checkProxyPolicy(), createRateLimiters(), create(), normalizedEmail(), RateLimiters (+11 more)
 
 ### Community 24 - "Changelog"
 Cohesion: 0.10
@@ -286,9 +297,9 @@ Nodes (16): [1.2.0](https://github.com/supabase/agent-skills/compare/v1.1.1...v1
 Cohesion: 0.05
 Nodes (39): email(), 1. Concrete Transformation Patterns, 2. Error-First Structure, 3. Quantified Impact, 4. Self-Contained Examples, 5. Semantic Naming, Code Example Standards, Comments (+31 more)
 
-### Community 31 - "ApiError"
-Cohesion: 0.16
-Nodes (17): ApiError, loginController(), authParamsSchema, authQuerySchema, loginSchema, mobileClientSchema, validateMobileClient(), checkEligibility() (+9 more)
+### Community 31 - "Native Student authentication"
+Cohesion: 0.25
+Nodes (8): Audit integrity, Authorization and database trust, Cold start and recovery, Expiry, concurrency and logout, Native Student authentication, Token and account flow, Transport and deployment constraints, Validation boundary
 
 ### Community 32 - "2. FINAL TECHNOLOGY STACK"
 Cohesion: 0.20
@@ -307,12 +318,12 @@ Cohesion: 0.20
 Nodes (9): 1. Query Performance (query), 2. Connection Management (conn), 3. Security & RLS (security), 4. Schema Design (schema), 5. Concurrency & Locking (lock), 6. Data Access Patterns (data), 7. Monitoring & Diagnostics (monitor), 8. Advanced Features (advanced) (+1 more)
 
 ### Community 36 - "Authentication data layer"
-Cohesion: 0.08
-Nodes (24): Audit insertion protocol, Authentication data layer, Current policy override — Student self-profile editing (2026-11-05), Migration and runtime boundary, T021 environment module, T022 runtime client and scoped queries, T023 error boundary, T024 rate-limit boundary (+16 more)
+Cohesion: 0.06
+Nodes (31): Audit insertion protocol, Authentication data layer, Current policy override — Student self-profile editing (2026-11-05), Migration and runtime boundary, T021 environment module, T022 runtime client and scoped queries, T023 error boundary, T024 rate-limit boundary (+23 more)
 
-### Community 37 - "Login requirements alignment — 2026-11-05"
+### Community 37 - "Deferred content WebView handoff"
 Cohesion: 0.40
-Nodes (5): Access and status, Login requirements alignment — 2026-11-05, Master amendments — approved and applied 2026-11-05, Remaining boundaries, Session policy
+Nodes (5): Decisions required before implementation, Deferred content WebView handoff, Future acceptance evidence, Proposed exchange sequence — not an available API, Scope and native boundary
 
 ### Community 38 - "Supabase Postgres Best Practices"
 Cohesion: 0.33
@@ -322,17 +333,17 @@ Nodes (5): How to Use, References, Rule Categories by Priority, Supabase Postgre
 Cohesion: 0.33
 Nodes (5): How to Use, References, Rule Categories by Priority, Supabase Postgres Best Practices, When to Apply
 
-### Community 105 - "react"
-Cohesion: 0.12
-Nodes (36): HomeScreen(), styles, LoginScreen(), styles, OutlineButtonProps, styles, PrimaryButtonProps, styles (+28 more)
+### Community 105 - "login.tsx"
+Cohesion: 0.42
+Nodes (7): HomeScreen(), styles, LoginScreen(), styles, SessionGate(), useAuth(), expo-status-bar
 
 ### Community 106 - "7. INITIAL RELEASE FEATURES"
 Cohesion: 0.22
 Nodes (9): 7.1 Student Registration and Assessment (FR R-01), 7.2 Login and Student Home (FR L-01, FR H-01), 7.3 Training Eligibility, Packages, and Modules (FR T-01), 7.4 Enrollment and Payment (FR T-01, FR AT-01, FR AP-01), 7.5 Schedule, Attendance, Renewal, and Make-Up Classes (FR S-01, FR AC-01, FR AA-01), 7.6 Student Notifications and Profile (FR N-01, FR P-01), 7.7 Administrator Screens (FR AL-01 through FR AN-01), 7.8 Non-Functional Requirements (source NFR 1–16) (+1 more)
 
 ### Community 107 - "password.service.ts"
-Cohesion: 0.07
-Nodes (29): client, require, result, schema, databaseUrl, env, loadEnv(), parseEnv() (+21 more)
+Cohesion: 0.06
+Nodes (33): client, require, result, schema, databaseUrl, env, loadEnv(), parseEnv() (+25 more)
 
 ### Community 108 - "3. WHAT THE TEAM WILL IMPLEMENT"
 Cohesion: 0.33
@@ -343,8 +354,8 @@ Cohesion: 0.33
 Nodes (6): 5. AUTHENTICATION FLOW, Authenticated Requests, Login, Logout, Password Recovery, Registration
 
 ### Community 110 - "Login UI state review — T066, 2026-11-05"
-Cohesion: 0.50
-Nodes (4): Applicable states and owner review, Design gaps and implementation gates, Login UI state review — T066, 2026-11-05, T042-T043 implementation review (2026-11-05)
+Cohesion: 0.29
+Nodes (7): Applicable states and owner review, Design gaps and implementation gates, Login UI state review — T066, 2026-11-05, T042-T043 implementation review (2026-11-05), T044 device evidence (completed 2026-11-06), T047 logout state review (2026-11-06; see completed T048 evidence below), T048 native sign-out evidence (completed 2026-11-06)
 
 ### Community 111 - "Start here"
 Cohesion: 0.25
@@ -359,72 +370,116 @@ Cohesion: 0.29
 Nodes (6): compilerOptions, noEmit, rootDir, extends, include, ../../tsconfig.base.json
 
 ### Community 114 - "Quickstart: User Login (Mobile)"
-Cohesion: 0.33
-Nodes (6): API acceptance after T031 and auth endpoint implementation, Device acceptance — owner-run after relevant stories, Final acceptance and evidence, Quickstart: User Login (Mobile), Session boundaries — T031 real database fixtures, Setup and execution boundary
+Cohesion: 0.15
+Nodes (13): API acceptance after T031 and auth endpoint implementation, Current checkpoint — T057 documentation refresh, Device acceptance — owner-run after relevant stories, Final acceptance and evidence, Quickstart: User Login (Mobile), Runtime, audit and boundary acceptance, SecureStore failure acceptance, Session boundaries — T031 real database fixtures (+5 more)
 
 ### Community 115 - "Implementation Plan: User Login (Mobile)"
-Cohesion: 0.18
-Nodes (11): API design consequences of mobile-first, Client Architecture and the WebView Question, Constitution Check, Documentation (this feature), Implementation Plan: User Login (Mobile), Phase Plan, Project Structure, Risks (+3 more)
+Cohesion: 0.17
+Nodes (12): API design consequences of mobile-first, Approved T016 alignment — 2026-11-02, Client Architecture and the WebView Question, Constitution Check, Documentation (this feature), Implementation Plan: User Login (Mobile), Phase Plan, Project Structure (+4 more)
 
-### Community 117 - "RequirementsStep.tsx"
-Cohesion: 0.12
-Nodes (27): CheckboxRow(), InlineNotice(), InlineNoticeProps, NoticeTone, styles, TONE, OptionCard(), SectionCard() (+19 more)
+### Community 116 - "plan.md"
+Cohesion: 0.33
+Nodes (5): Access and status, Login requirements alignment — 2026-11-05, Master amendments — approved and applied 2026-11-05, Remaining boundaries, Session policy
+
+### Community 117 - "react"
+Cohesion: 0.10
+Nodes (42): OutlineButtonProps, styles, PrimaryButtonProps, styles, styles, BorderRadius, Colors, RegistrationColors (+34 more)
 
 ### Community 118 - "RegistrationWizard.tsx"
-Cohesion: 0.13
-Nodes (25): ContactStep(), GuardianDraft, RELATIONSHIP_OPTIONS, toRelationship(), computeAge(), formatDateOfBirth(), formatMobileNational(), isFutureDate() (+17 more)
+Cohesion: 0.15
+Nodes (24): DateField(), FieldShell(), SelectField(), PersonalStep(), styles, toGender(), ageSummary(), computeAge() (+16 more)
 
-### Community 119 - "vitest"
-Cohesion: 0.21
-Nodes (10): AppRuntime, createApp(), fresh(), payload, runtimes, service, success, fresh() (+2 more)
+### Community 119 - "ContactStep.tsx"
+Cohesion: 0.10
+Nodes (34): CheckboxRow(), InlineNotice(), InlineNoticeProps, NoticeTone, styles, TONE, OptionCard(), SectionCard() (+26 more)
 
-### Community 123 - "require-permission.ts"
-Cohesion: 0.16
-Nodes (14): requireOwnership(), Express, PermissionDenial, PermissionGateOptions, PermissionIdentity, Request, requirePermission(), harness() (+6 more)
+### Community 123 - "index.ts"
+Cohesion: 0.06
+Nodes (59): error, legacyRole, passwordEcho, rawDate, request, response, roleClaim, session (+51 more)
 
-### Community 124 - "RegistrationWizard.tsx"
-Cohesion: 0.14
-Nodes (20): RegisterScreen(), PrimaryButton(), TextField(), validateLoginInput(), LoginForm(), ProgressSteps(), ProgressStepsProps, styles (+12 more)
+### Community 124 - "vitest"
+Cohesion: 0.09
+Nodes (15): AuthWorkContext, credentials(), fixture, signIn(), native, fixture, unauthorized, createSecurityDatabase() (+7 more)
 
 ### Community 125 - "tsconfig.tests.json"
 Cohesion: 0.18
 Nodes (10): compilerOptions, jsx, lib, noEmit, rootDir, skipLibCheck, exclude, extends (+2 more)
 
 ### Community 126 - "CredentialsStep.tsx"
-Cohesion: 0.53
-Nodes (4): TextFieldProps, PasswordChecklist(), RegistrationTextField(), CredentialsStep()
+Cohesion: 0.31
+Nodes (8): TextField(), TextFieldProps, validateLoginInput(), LoginForm(), PasswordChecklist(), RegistrationTextField(), CredentialsStep(), Phase 2: UI Design — Login Screen (Mobile)
 
-### Community 129 - "PersonalStep.tsx"
-Cohesion: 0.18
-Nodes (17): OutlineButton(), RegistrationColors, DateField(), DateFieldProps, MONTHS, styles, FieldShell(), FieldShellProps (+9 more)
+### Community 128 - "ADR-0001: Server-managed opaque sessions and database authorization"
+Cohesion: 0.40
+Nodes (5): ADR-0001: Server-managed opaque sessions and database authorization, Alternatives considered, Consequences and limits, Context, Decision
+
+### Community 129 - "native-check.mjs"
+Cohesion: 0.40
+Nodes (3): socket, target, targets
 
 ### Community 130 - "Algorithm 1: Cardinality-Constrained Weighted Interval Scheduling (CC-WIS)"
 Cohesion: 0.29
 Nodes (7): Algorithm 1: Cardinality-Constrained Weighted Interval Scheduling (CC-WIS), Algorithm Process, Benchmark Targets, Expected Output, Inputs, Purpose, Rules and Constraints
 
-### Community 136 - "error-handler.ts"
-Cohesion: 0.16
-Nodes (15): zod@^3.23.0, ApiErrorCode, catalog, errorHandler(), normalizeError(), ValidationField, validationFields, failingApp() (+7 more)
+### Community 133 - "Authentication implementation checkpoints"
+Cohesion: 0.08
+Nodes (26): Audit checkpoint deferred; T030 application wiring, Authentication implementation checkpoints, Follow-up: remove unused STAFF (current checkpoint), Original rename checkpoint (completed owner validation), T017 security-test checkpoint, T018 Prisma schema validation, T019 migrations and T020 owner application, T021 runtime environment setup (owner-run) (+18 more)
+
+### Community 134 - "error-handler.ts"
+Cohesion: 0.14
+Nodes (17): zod@^3.23.0, ApiErrorCode, catalog, errorHandler(), normalizeError(), ValidationField, validationFields, AuthRouteOptions (+9 more)
+
+### Community 135 - "RegistrationWizard.tsx"
+Cohesion: 0.23
+Nodes (14): RegisterScreen(), OutlineButton(), PrimaryButton(), ProgressSteps(), RegistrationSuccess(), RegistrationWizard(), RegistrationWizardProps, STEP_TITLES (+6 more)
+
+### Community 136 - "auth.controller.ts"
+Cohesion: 0.31
+Nodes (10): readBearerToken(), loginController(), logoutController(), sessionController, authParamsSchema, authQuerySchema, loginSchema, logoutSchema (+2 more)
+
+### Community 137 - "mobile/package.json"
+Cohesion: 0.21
+Nodes (11): devDependencies, @babel/core@^7.24.0, @types/react@~19.3.0, typescript@^5.6.0, typescript, main, name, private (+3 more)
+
+### Community 138 - "metro.config.js"
+Cohesion: 0.20
+Nodes (6): config, { getDefaultConfig }, path, sharedSource, expo@~58.0.22, expo
+
+### Community 140 - "cleanup-readme-docs.mjs"
+Cohesion: 0.22
+Nodes (8): boundary, history, historyPath, original, readmePath, root, summary, walk()
+
+### Community 141 - "scripts"
+Cohesion: 0.40
+Nodes (5): scripts, android, build:android, dev, ios
+
+### Community 142 - "Development guide"
+Cohesion: 0.40
+Nodes (5): Configuration, Development and validation, Development guide, Device troubleshooting, Validation limits
+
+### Community 143 - "T058 authentication security review"
+Cohesion: 0.50
+Nodes (4): Finding fixed: rejected-session cleanup could be bypassed locally, Reviewed boundaries, T058 authentication security review, Validation and remaining release gates
 
 ## Knowledge Gaps
 - **4 isolated node(s):** `../../tsconfig.base.json`, `./tsconfig.json`, `../../tsconfig.base.json`, `../../tsconfig.base.json`
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 723 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **72 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 791 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **74 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `react` connect `react` to `PersonalStep.tsx`, `mobile/package.json`, `index.ts`, `RequirementsStep.tsx`, `RegistrationWizard.tsx`, `RegistrationWizard.tsx`, `CredentialsStep.tsx`?**
-  _High betweenness centrality (0.098) - this node is a cross-community bridge._
+- **Why does `react` connect `react` to `dependencies`, `RegistrationWizard.tsx`, `login.tsx`, `mobile/package.json`, `RegistrationWizard.tsx`, `ContactStep.tsx`, `index.ts`, `CredentialsStep.tsx`?**
+  _High betweenness centrality (0.097) - this node is a cross-community bridge._
 - **What connects `../../tsconfig.base.json`, `./tsconfig.json`, `../../tsconfig.base.json` to the rest of the system?**
   _4 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `OAK SPORTS ACADEMY TRAINING REGISTRATION AND MANAGEMENT SYSTEM` be split into smaller, more focused modules?**
-  _Cohesion score 0.14285714285714285 - nodes in this community are weakly interconnected._
-- **Why does `vitest` connect `vitest` to `api/package.json`, `error-handler.ts`, `password.service.ts`, `index.ts`, `app.ts`, `vitest`, `require-permission.ts`, `ApiError`?**
-  _High betweenness centrality (0.064) - this node is a cross-community bridge._
 - **Should `api/package.json` be split into smaller, more focused modules?**
   _Cohesion score 0.059233449477351915 - nodes in this community are weakly interconnected._
-- **Why does `Tasks: User Login (Mobile)` connect `Tasks: User Login (Mobile)` to `RegistrationWizard.tsx`, `plan.md`?**
-  _High betweenness centrality (0.042) - this node is a cross-community bridge._
-- **Should `mobile/package.json` be split into smaller, more focused modules?**
-  _Cohesion score 0.05853658536585366 - nodes in this community are weakly interconnected._
+- **Why does `Tasks: User Login (Mobile)` connect `Tasks: User Login (Mobile)` to `tasks.md`, `CredentialsStep.tsx`?**
+  _High betweenness centrality (0.090) - this node is a cross-community bridge._
+- **Should `dependencies` be split into smaller, more focused modules?**
+  _Cohesion score 0.14285714285714285 - nodes in this community are weakly interconnected._
+- **Why does `vitest` connect `vitest` to `api/package.json`, `prisma.ts`, `error-handler.ts`, `auth.controller.ts`, `password.service.ts`, `ApiError`, `require-permission.ts`, `audit.service.ts`, `app.ts`, `index.ts`?**
+  _High betweenness centrality (0.075) - this node is a cross-community bridge._
+- **Should `Changelog` be split into smaller, more focused modules?**
+  _Cohesion score 0.09523809523809523 - nodes in this community are weakly interconnected._

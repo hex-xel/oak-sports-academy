@@ -6,6 +6,31 @@ import { ApiClientError, createApiClient, resolveApiUrl } from "../../../mobile/
 afterEach(() => { vi.useRealTimers(); });
 const baseUrl = () => "https://synthetic.example.test/api/v1";
 describe("mobile JSON API transport", () => {
+  it("invalidates authenticated 401s once per request without replaying or affecting login failures", async () => {
+    const transport = vi.fn<typeof fetch>().mockImplementation(async () => new Response("{}", { status: 401 }));
+    const rejected = vi.fn().mockResolvedValue(undefined);
+    const capture = vi.fn(() => rejected);
+    const client = createApiClient({ baseUrl, fetch: transport, readToken: async () => "saved" });
+    client.setUnauthorizedHandler(capture);
+    await expect(client.session()).rejects.toMatchObject({ status: 401 });
+    expect(rejected).toHaveBeenCalledTimes(1);
+    await expect(client.login({ email: "s@example.test", password: "x" })).rejects.toMatchObject({ status: 401 });
+    expect(capture).toHaveBeenCalledTimes(1);
+    expect(rejected).toHaveBeenCalledTimes(1);
+    expect(transport).toHaveBeenCalledTimes(2);
+  });
+  it("does not await queued cleanup or invalidate on permission and server failures", async () => {
+    const transport = vi.fn<typeof fetch>().mockImplementation(async () => new Response("{}", { status: 401 }));
+    const rejected = vi.fn(() => new Promise<void>(() => {}));
+    const client = createApiClient({ baseUrl, fetch: transport, readToken: async () => "saved" });
+    client.setUnauthorizedHandler(() => rejected);
+    await expect(client.session()).rejects.toMatchObject({ status: 401 });
+    for (const status of [403, 500]) {
+      transport.mockResolvedValueOnce(new Response("{}", { status }));
+      await expect(client.session()).rejects.toMatchObject({ status });
+    }
+    expect(rejected).toHaveBeenCalledTimes(1);
+  });
   it("uses an explicit LAN override in development and HTTPS config in release", () => {
     expect(resolveApiUrl("https://api.example.test/api/v1/", "http://192.168.1.5:3000/api/v1", true))
       .toBe("http://192.168.1.5:3000/api/v1");
@@ -52,6 +77,12 @@ describe("mobile JSON API transport", () => {
     const transport = vi.fn<typeof fetch>().mockRejectedValue(new Error("private network data"));
     const client = createApiClient({ baseUrl, fetch: transport, readToken: async () => "synthetic" });
     await expect(client.logout()).rejects.toMatchObject({ code: "NETWORK_ERROR" });
+    expect(transport).toHaveBeenCalledTimes(1);
+  });
+  it("does not treat a non-contract 200 response as confirmed logout", async () => {
+    const transport = vi.fn<typeof fetch>().mockResolvedValue(new Response("{}", { status: 200 }));
+    const client = createApiClient({ baseUrl, fetch: transport, readToken: async () => "synthetic" });
+    await expect(client.logout()).rejects.toMatchObject({ code: "INVALID_RESPONSE", status: 200 });
     expect(transport).toHaveBeenCalledTimes(1);
   });
   it("bounds a hanging fetch, aborts it and allows a separate explicit retry", async () => {

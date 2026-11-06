@@ -11,6 +11,10 @@
  */
 
 import React from "react";
+import { Redirect, useLocalSearchParams, useRouter } from "expo-router";
+import { recoveryDestination, SESSION_ENDED_MESSAGE } from "../features/auth/messages";
+import { useAuth } from "../lib/auth-context";
+import { SessionGate } from "../features/auth/SessionGate";
 import {
   View,
   Text,
@@ -22,6 +26,7 @@ import {
   SafeAreaView,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useLogin } from "../features/auth/useLogin";
 import { LoginForm } from "../features/auth/LoginForm";
 import { Colors, Typography, Spacing } from "../constants/theme";
 
@@ -36,6 +41,13 @@ import { Colors, Typography, Spacing } from "../constants/theme";
  * @returns Complete mobile login view with branded header and scroll container
  */
 export default function LoginScreen() {
+  const login = useLogin();
+  const auth = useAuth();
+  const router = useRouter();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>();
+  if (auth.status === "restoring" || auth.logoutPending || auth.logoutCleanupFailed) return <SessionGate />;
+  const destination = recoveryDestination(returnTo, auth.user);
+  if (auth.status === "signedIn" && destination) return <Redirect href={destination} />;
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
@@ -66,7 +78,13 @@ export default function LoginScreen() {
 
           {/* Form Surface Card (Overlaps the bottom of the hero banner) */}
           <View style={styles.formCard}>
-            <LoginForm />
+            {auth.sessionEnded && <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.logoutNotice}>
+              {SESSION_ENDED_MESSAGE}
+            </Text>}
+            {auth.logoutRemoteFailed && <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.logoutNotice}>
+              Signed out on this device. Server sign-out could not be confirmed; that session may remain active until it expires.
+            </Text>}
+            <LoginForm onSubmit={login.submit} isLoading={login.pending} serverError={login.error} retrySeconds={login.remaining} onRegisterPress={() => router.push("/register")} />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -75,6 +93,12 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  logoutNotice: {
+    color: Colors.textPrimary,
+    fontSize: Typography.fontSize.sm,
+    lineHeight: Typography.lineHeight.normal,
+    marginBottom: Spacing.base,
+  },
   safeArea: {
     flex: 1,
     backgroundColor: Colors.brandForestGreen,

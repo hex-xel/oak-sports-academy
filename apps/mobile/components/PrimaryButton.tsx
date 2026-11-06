@@ -20,7 +20,7 @@ import {
   TextStyle,
   StyleProp,
 } from "react-native";
-import { Colors, Typography, Spacing, BorderRadius } from "../constants/theme";
+import { Colors, Typography, Spacing, BorderRadius, RegistrationColors } from "../constants/theme";
 
 export interface PrimaryButtonProps {
   /** The text displayed inside the button */
@@ -29,9 +29,9 @@ export interface PrimaryButtonProps {
   onPress: () => void;
   /**
    * Visual tone. `dark` is the approved login/sign-in fill; `forest` and `gold` are the
-   * registration "Continue" and "Submit Registration" fills from the sticker sheet.
+   * registration "Continue" and "Submit Registration" fills; `neutral` is its logout fill.
    */
-  variant?: "dark" | "forest" | "gold";
+  variant?: "dark" | "forest" | "gold" | "neutral";
   /** Whether an asynchronous operation is in progress (shows spinner and locks interaction) */
   loading?: boolean;
   /** Disables click interaction and switches to muted disabled color tokens */
@@ -66,11 +66,13 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
   // Interaction is blocked if either disabled or an async operation is actively pending
   const isInteractionDisabled = disabled || loading;
   const tone =
-    variant === "gold"
-      ? { fill: Colors.buttonGold, label: Colors.buttonGoldText }
-      : variant === "forest"
-        ? { fill: Colors.buttonForest, label: Colors.textOnDark }
-        : { fill: Colors.buttonDark, label: Colors.textOnDark };
+    variant === "neutral"
+      ? { fill: RegistrationColors.divider, label: RegistrationColors.navy }
+      : variant === "gold"
+        ? { fill: Colors.buttonGold, label: Colors.buttonGoldText }
+        : variant === "forest"
+          ? { fill: Colors.buttonForest, label: Colors.textOnDark }
+          : { fill: Colors.buttonDark, label: Colors.textOnDark };
 
   return (
     <TouchableOpacity

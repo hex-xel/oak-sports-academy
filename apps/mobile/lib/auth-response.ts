@@ -31,7 +31,12 @@ export function parseSessionResponse(value: unknown): SessionResponse {
   return { user: summary(data["user"]), expiresAt: data["expiresAt"], landingPath: "/" };
 }
 
-/** Validates/project login JSON and its issued 256-bit token; throws safe ApiClientError, no I/O. */
+/**
+ * Validate/project login JSON and its issued 256-bit token before secure persistence.
+ * @param value Untrusted decoded API response.
+ * @returns Safe Student identity, fixed landing path, expiry and issued token.
+ * @throws ApiClientError/INVALID_RESPONSE on contract failure; no I/O or logging.
+ */
 export function parseLoginResponse(value: unknown): LoginResponse {
   const session = parseSessionResponse(value);
   const token = (value as Record<string, unknown>)["sessionToken"];

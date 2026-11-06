@@ -34,8 +34,8 @@ site visitors.
 
 | Path | Contents |
 | --- | --- |
-| `apps/api/` | Express API (empty scaffold) |
-| `apps/mobile/` | Expo app (empty scaffold) |
+| `apps/api/` | Express native auth/session/logout API, permission/RLS/audit infrastructure and guarded test harness |
+| `apps/mobile/` | Expo native login, secure session recovery and sign-out; full Home is separate |
 | `apps/web/` | Next.js site and admin dashboard (empty scaffold) |
 | `packages/shared/` | Shared TypeScript types and utilities |
 | `prototype/schedule-selection/` | Scheduling algorithm prototype and benchmarks |
@@ -47,29 +47,45 @@ site visitors.
 
 ## Current status
 
-- **T035–T040 written and checked:** mobile API/auth-state foundations, matching login
-  validation, service and HTTP contract tests. Focused 58 tests and all four typechecks
-  pass. Final full run: 260 passed; 20 active HTTP tests fail with expected 404 until
-  **T041** registers auth routes. End-to-end login/device acceptance remains pending.
-  See [[architecture/auth-data|Authentication data layer]] for details.
+As of 2026-11-06, native Student login, server-confirmed startup restoration, current-
+session logout and concurrent-401 recovery are implemented. The API enforces current
+eligibility, centralized permissions/ownership and transaction-local RLS; audit writes
+use serialized hash chaining. T031's restricted disposable database harness is complete.
 
-- **T034 complete:** mobile SecureStore token helper, safe storage failures and seven
-  mocked-native tests passed, along with mobile/API test typechecks. Native device
-  persistence checks remain for integrated auth flows. Next task: T035 API client.
-  See [[architecture/auth-data|Authentication data layer]] for usage and boundaries.
+The latest T059 local rerun passed **344 tests in 29 files** and all four typechecks
+on installed Node 24.22.1. T058's scoped security review fixed automatic-invalidation
+cleanup gating. Owner confirmed native login/logout, expiry, recovery and TalkBack
+checks. Native storage-failure coverage is adapter-based, not device fault injection.
 
-Phase 3 of `specs/001-user-login/` is in progress. The mobile login UI is complete
-and approved. T016 aligned the feature artifacts; T017 security tests are written but
-cannot collect until their backend modules and T031 harness exist. T018 adds the Prisma
-auth/audit schema; owner Prisma validation passed. T019 SQL migrations are written
-and owner-applied; Prisma Client generation and T020 metadata review are complete.
-Runtime security tests remain pending T031. Client order remains customer mobile first, staff/admin web later
-this semester, and customer web next semester.
+**Open acceptance:** T053's fresh-API phone run showed restoring in 3 seconds against
+a 2-second target; owner deferred that timing failure. T059 remains incomplete: local
+Argon2 verification is about 19 ms median, but no API deployment host has been identified
+for password/full-login performance. Supabase setup alone is not API deployment.
 
-See [[architecture/auth-data|Authentication data layer]] for schema boundaries and
-[the task list](../specs/001-user-login/tasks.md) for current implementation status.
+**Graph checkpoint:** T061 completed, code graph refreshed and queried successfully.
+**Next up:** Resolve deferred startup timing and complete
+deployment-host/final acceptance when the owner authorizes the required environment.
+Full Home/navigation, working registration, password recovery, Student web and WebView
+handoff remain separate feature work; no unpaid entitlement activation is implied.
+
+See [the task list](../specs/001-user-login/tasks.md) and
+[acceptance guide](../specs/001-user-login/quickstart.md) for evidence and boundaries.
 
 ## Read in this order
+
+Authentication decisions: [[decisions/ADR-0001-opaque-sessions|ADR-0001 — Opaque
+sessions, RLS and audit integrity]].
+
+Future content reuse: [[architecture/webview-strategy|Deferred WebView handoff]];
+native authentication remains the implemented flow.
+
+Review evidence: [[architecture/auth-security-review|T058 authentication security review]].
+
+Earlier implementation logs: [[architecture/auth-checkpoint-history|Authentication checkpoint archive]].
+Routine commands: [[development|Development guide]]. Task history stays outside README.
+
+The current authentication flow is documented in [[architecture/auth|Native Student
+authentication]], with implementation evidence in [[architecture/auth-data]].
 
 1. This file.
 2. `specifications.md` — approved requirements. Section 7 lists release features,

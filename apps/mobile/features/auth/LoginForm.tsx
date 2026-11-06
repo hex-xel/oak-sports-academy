@@ -8,7 +8,7 @@
  * - State 2: Active input typing with clear focus outlines
  * - State 3 & 4: Password character masking and eye visibility toggle
  * - State 5 & 6: Client-side validation inline errors
- * - Remember me persistence flag & Forgot password navigation stub
+ * - Explicit login retry and Forgot password navigation stub
  * - Footer register link for unauthenticated visitors
  */
 
@@ -29,13 +29,14 @@ import { validateLoginInput } from "./login-validation";
 export interface LoginFormProps {
   /**
    * Submission handler invoked when the form passes client-side validation.
-   * In Phase 2, this triggers a mock/console action; in Phase 4, it connects to useLogin.
+   * Receives validated credentials for the explicit login attempt.
    */
   onSubmit?: (credentials: {
     email: string;
     password: string;
-    rememberMe: boolean;
   }) => void;
+  /** Remaining server-mandated wait; disables resubmission without replay. */
+  retrySeconds?: number;
   /** Whether authentication network request is actively in progress */
   isLoading?: boolean;
   /** General server error message returned by API (e.g. rate limit, bad credentials) */
@@ -55,6 +56,7 @@ export interface LoginFormProps {
 export const LoginForm: React.FC<LoginFormProps> = ({
   onSubmit,
   isLoading = false,
+  retrySeconds = 0,
   serverError,
   onForgotPasswordPress,
   onRegisterPress,
@@ -62,7 +64,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
   // Form input state
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
-  const [rememberMe, setRememberMe] = useState<boolean>(true);
 
   // Field validation error messages
   const [emailError, setEmailError] = useState<string>("");
@@ -73,7 +74,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
    * Emits user-friendly error copy matching the Figma high-fidelity mockups.
    */
   const handleLoginSubmit = () => {
-    if (isLoading) return;
+    if (isLoading || retrySeconds > 0) return;
     const validation = validateLoginInput(email, password);
     setEmailError(validation.errors.email ?? "");
     setPasswordError(validation.errors.password ?? "");
@@ -82,7 +83,6 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     if (onSubmit) {
       onSubmit({
         ...validation.credentials,
-        rememberMe,
       });
     } else {
       Alert.alert(
@@ -104,7 +104,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
       {serverError ? (
         <View style={styles.serverErrorBanner}>
           <Ionicons name="warning-outline" size={18} color={Colors.error} />
-          <Text style={styles.serverErrorText}>{serverError}</Text>
+          <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.serverErrorText}>{serverError}</Text>
         </View>
       ) : null}
 
@@ -140,24 +140,8 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         testID="input-login-password"
       />
 
-      {/* Options Row: Remember Me & Forgot Password */}
+      {/* Password recovery */}
       <View style={styles.optionsRow}>
-        <TouchableOpacity
-          style={styles.rememberMeContainer}
-          onPress={() => setRememberMe((prev) => !prev)}
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: rememberMe }}
-          accessibilityLabel="Remember my login credentials on this device"
-          activeOpacity={0.7}
-        >
-          <Ionicons
-            name={rememberMe ? "checkbox" : "square-outline"}
-            size={20}
-            color={rememberMe ? Colors.brandForestGreen : Colors.textMuted}
-          />
-          <Text style={styles.rememberMeText}>Remember me</Text>
-        </TouchableOpacity>
-
         <TouchableOpacity
           onPress={
             onForgotPasswordPress ??
@@ -177,9 +161,9 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 
       {/* Action Button */}
       <PrimaryButton
-        label="Log in"
+        label={retrySeconds > 0 ? `Try again in ${retrySeconds}s` : "Log in"}
         onPress={handleLoginSubmit}
-        disabled={isFormEmpty || isLoading}
+        disabled={isFormEmpty || isLoading || retrySeconds > 0}
         loading={isLoading}
         style={styles.submitButton}
         testID="btn-login-submit"
@@ -212,7 +196,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
 const styles = StyleSheet.create({
   formContainer: {
     width: "100%",
-    minWidth: 320, // Satisfies minimum 360dp phone viewport layout constraint
+    minWidth: 0,
   },
   title: {
     fontSize: Typography.fontSize.xxl,
@@ -239,21 +223,10 @@ const styles = StyleSheet.create({
   },
   optionsRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-end",
     alignItems: "center",
     marginBottom: Spacing.xl,
     marginTop: Spacing.xs,
-  },
-  rememberMeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.xs,
-    paddingVertical: Spacing.xs,
-  },
-  rememberMeText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.textPrimary,
-    fontWeight: Typography.fontWeight.medium,
   },
   forgotPasswordText: {
     fontSize: Typography.fontSize.sm,

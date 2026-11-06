@@ -1,13 +1,3 @@
-/**
- * @file apps/mobile/app/index.tsx
- * Customer home screen placeholder for Oak Sports Academy mobile client.
- *
- * Serves as the landing destination upon successful sign-in (User Story 1 acceptance).
- * In Phase 2 (UI Scaffold), this renders a placeholder dashboard with customer session details
- * and a sign-out button stub that navigates back to `/login`.
- * In Phase 4, this screen receives genuine user session data from `auth-context.tsx`.
- */
-
 import React from "react";
 import {
   View,
@@ -15,25 +5,25 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  Image,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { Redirect } from "expo-router";
+import { useAuth } from "../lib/auth-context";
+import { SessionGate } from "../features/auth/SessionGate";
 import { StatusBar } from "expo-status-bar";
 import { Ionicons } from "@expo/vector-icons";
-import { PrimaryButton } from "../components/PrimaryButton";
 import { Colors, Typography, Spacing, BorderRadius } from "../constants/theme";
+import { PrimaryButton } from "../components/PrimaryButton";
 
 /**
- * Customer home screen component.
+ * Protected Student landing placeholder with current-device sign-out; full Home is separate.
  *
  * @returns Protected dashboard placeholder view
  */
 export default function HomeScreen() {
-  const router = useRouter();
-
-  const handleSignOutStub = () => {
-    // In Phase 2 UI testing, routes back to the login screen
-    router.replace("/login");
-  };
+  const auth = useAuth();
+  if (auth.status === "restoring" || auth.logoutPending || auth.logoutCleanupFailed) return <SessionGate />;
+  if (auth.status !== "signedIn" || auth.user?.role !== "STUDENT" || auth.user.status !== "ACTIVE") return <Redirect href={{ pathname: "/login", params: { returnTo: "/" } }} />;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -44,10 +34,10 @@ export default function HomeScreen() {
         <View style={styles.header}>
           <View>
             <Text style={styles.greetingTitle}>Welcome Back!</Text>
-            <Text style={styles.greetingSubtitle}>Oak Sports Academy Dashboard</Text>
+            <Text style={styles.greetingSubtitle}>Oak Sports Academy</Text>
           </View>
           <View style={styles.profileBadge}>
-            <Ionicons name="person" size={20} color={Colors.brandGold} />
+            <Image source={require("../assets/images/logo.png")} style={{ width: 32, height: 36 }} resizeMode="contain" accessibilityLabel="Oak Sports Academy Crest" />
           </View>
         </View>
 
@@ -55,33 +45,26 @@ export default function HomeScreen() {
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Ionicons name="checkmark-circle" size={24} color={Colors.success} />
-            <Text style={styles.cardTitle}>Signed In (UI Preview)</Text>
+            <Text style={styles.cardTitle}>Signed in</Text>
           </View>
 
           <Text style={styles.cardDescription}>
-            This is the protected home screen specified in User Story 1 (T037).
-            In Phase 4, genuine user session context will populate this view.
+            Welcome, {auth.user.displayName ?? auth.user.email}.
           </Text>
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Active Client:</Text>
-            <Text style={styles.infoValue}>Mobile App (Expo)</Text>
+            <Text style={styles.infoLabel}>Account:</Text>
+            <Text style={styles.infoValue}>Student</Text>
           </View>
 
           <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Branch:</Text>
-            <Text style={styles.infoValue}>Taguig Branch</Text>
+            <Text style={styles.infoLabel}>Status:</Text>
+            <Text style={styles.infoValue}>Active</Text>
           </View>
         </View>
 
-        {/* Sign Out Action Button */}
-        <View style={styles.actionContainer}>
-          <PrimaryButton
-            label="Sign Out (UI Stub)"
-            onPress={handleSignOutStub}
-            style={styles.signOutButton}
-          />
-        </View>
+        <PrimaryButton label="Sign out" variant="neutral" testID="btn-sign-out"
+          onPress={() => { void auth.signOut().catch(() => { /* The shared cleanup gate exposes deletion failure and retry. */ }); }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -166,11 +149,5 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     color: Colors.textPrimary,
     fontWeight: Typography.fontWeight.semibold,
-  },
-  actionContainer: {
-    marginTop: Spacing.base,
-  },
-  signOutButton: {
-    backgroundColor: Colors.brandForestGreen,
   },
 });

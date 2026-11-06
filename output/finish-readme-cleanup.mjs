@@ -1,0 +1,10 @@
+import fs from 'node:fs';
+const readme=fs.readFileSync('README.md','utf8').replace(/\r\n/g,'\n');
+const boundary=readme.indexOf('\n## Configuration\n');
+if(boundary<0 || fs.existsSync('docs/development.md')) throw new Error('Unexpected documentation state');
+const setup=readme.slice(boundary+1).replace(/\]\(([^)]+)\)/g,(m,p)=>/^(https?:|mailto:|#)/.test(p)?m:`](../${p})`);
+fs.writeFileSync('docs/development.md','---\nstatus: active\nowner: team\nmilestone: 1\n---\n\n# Development guide\n\n'+setup);
+fs.writeFileSync('README.md',readme.slice(0,boundary).trimEnd().replace('Use the development and validation commands below.','Use the [development guide](docs/development.md) for commands.')+'\n');
+let quickstart=fs.readFileSync('specs/001-user-login/quickstart.md','utf8');
+quickstart=quickstart.replaceAll('../../README.md#development-and-validation','../../docs/development.md#development-and-validation').replaceAll('../../README.md#configuration','../../docs/development.md#configuration').replaceAll('[README test runtime commands]','[Test runtime commands]').replaceAll('[README native review instructions]','[Native review instructions]').replaceAll('[README configuration and validation]','[Development configuration and validation]').replaceAll('[README native checkpoint]','[Native development commands]').replaceAll('[README benchmark command]','[Password benchmark command]');
+fs.writeFileSync('specs/001-user-login/quickstart.md',quickstart);

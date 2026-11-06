@@ -563,13 +563,13 @@ usable; force-close/reopen acceptance finishes with US3.
   run: 58/58; final full run: 260 passed, 20 T038 expected failures, no unhandled errors.
   Earlier rate-limit worker exit did not recur in isolated and final full runs.
 
-- [ ] T041 [US1] Implement controllers/routes in
+- [x] T041 [US1] Implement controllers/routes in
   `apps/api/src/modules/auth/auth.controller.ts`, `apps/api/src/modules/auth/auth.routes.ts`,
   and register in `apps/api/src/app.ts`. Only `POST /auth/login` returns sessionToken
   and expiresAt; `GET /auth/session` uses auth, permission, ownership, and scoped DB
   access and returns safe user/expiry data with no token or hashes. Attach login limiters.
 
-- [ ] T042 [US1] Map safe API/offline/timeout/rate-limit copy in
+- [x] T042 [US1] Map safe API/offline/timeout/rate-limit copy in
   `apps/mobile/features/auth/messages.ts`, then implement
   `apps/mobile/features/auth/useLogin.ts` and wire `LoginForm.tsx`: API call, successful
   SecureStore write before entering signedIn, disabled submit while pending, recoverable
@@ -577,7 +577,7 @@ usable; force-close/reopen acceptance finishes with US3.
   Use one generic credential error for wrong/unknown credentials; preserve safe email
   input, prevent duplicate submits and review accessibility/state coverage in the UI checklist.
 
-- [ ] T043 [US1] Replace mock guard/home state in `apps/mobile/app/_layout.tsx` and
+- [x] T043 [US1] Replace mock guard/home state in `apps/mobile/app/_layout.tsx` and
   `apps/mobile/app/index.tsx` using real auth context and approved account restrictions.
   Inspect the mobile high-fidelity mockups/sticker sheet before any UI edit, retain the
   official crest, 360 dp usability, keyboard avoidance, and accessible error announcements.
@@ -585,11 +585,44 @@ usable; force-close/reopen acceptance finishes with US3.
   (Home, Training, Schedule, Notification, Profile) belong to a dependent Home feature;
   do not claim its completion from a placeholder authenticated screen.
 
-- [ ] T044 [US1] Owner runs `npm test -w apps/api` from the repository root and the
+  T041-T043 evidence (2026-11-05): production login/session routes, real mobile
+  submission/persistence, safe failure/countdown, real guard and bounded startup
+  confirmation implemented. Startup brings forward part of T050 to avoid indefinite
+  restoring; full US3 invalidation/device acceptance remains. Remember Me removed under
+  owner proper-UX condition because persistence is automatic; generic form-level
+  credentials feedback retains approved styling. Four typechecks and 287 tests in
+  26 files pass, including three production-HTTP/restricted-DB integration checks.
+
+- [x] T044 [US1] Owner runs `npm test -w apps/api` from the repository root and the
   sign-in/failure/device checks in `specs/001-user-login/quickstart.md` §5 (start with
   `npm run dev -w apps/api` and `npm run dev -w apps/mobile` in separate root terminals).
   Expected: tests pass and UI matches approved designs. On failure stop and share
   redacted output/screenshots; agent fixes before proceeding.
+
+T044 acceptance completed 2026-11-06 with explicit owner permission for agent tests.
+Final unchanged suite: 287/287 tests, 26 files, exit 0, no unhandled errors, using the
+already installed Node 24.22.1 runtime. System Node 24.15.0 intermittently exited HTTP
+workers; an experimental listener/thread-pool change was reverted. No assertions or
+coverage were removed. Exact passing command/runtime is in quickstart.
+
+Device: existing Android API 36.1 x86_64 emulator, Expo Go 58.0.5, SDK 58.0.22. Owner
+configured density 480 (1080 px / 3 = 360 dp) and font scale 1.3. Agent observed the
+crest/icons, focus outlines, masked dummy password, reachable submit by keyboard-open
+scrolling, malformed-email error and edit recovery, safe network feedback, generic
+unknown-account feedback, real Retry-After countdown with disabled submit, and real
+ACTIVE Student entry. Owner entered the private seed password and confirmed successful
+sign-in, then confirmed keyboard reachability and TalkBack labels/error announcements
+at 360 dp/large text. Agent observed authenticated landing and server-confirmed identity
+after force-close/reopen; no token/password was extracted or logged. Full US3 relaunch/
+expiry/concurrent-invalidation acceptance still belongs to T049-T053.
+
+Resolved environment/bundle blockers: scoped Metro shared-source .js resolution fix
+verified by Android bundle HTTP 200; owner-installed Expo Go after explicitly approved
+reset of the disposable full emulator; emulator host-loopback URL for Metro assets and
+owner-configured API URL. One native EventEmitter startup error after display changes
+recovered on clean Expo launch; subsequent sign-in and restoration succeeded. Source-map
+inspection found bundled React Native sources under the mobile app, so no speculative
+native dependency alias or package change was retained. No new cloud setup/migration.
 
 **Checkpoint**: Sign-in works on-device with the new security controls. Persistent
 relaunch behavior is accepted after Phase 6, not claimed complete here.
@@ -602,23 +635,66 @@ relaunch behavior is accepted after Phase 6, not claimed complete here.
 **Independent Test**: Online logout rejects a replayed token immediately; another
 session remains valid; offline logout clears local state and leaves remote expiry.
 
-- [ ] T045 [US2] Write `apps/api/tests/auth/logout.api.test.ts` for current-token
+- [x] T045 [US2] Write `apps/api/tests/auth/logout.api.test.ts` for current-token
   revocation, repeated logout, other-device independence, and missing/malformed header
   behavior approved in T016. Owner confirms expected failures before implementation.
+  Test writing completed 2026-11-06: 16 production-route/restricted-local-DB tests,
+  including immediate replay denial, idempotence, other-device/account isolation,
+  forged identity stripping, unknown/idle/absolute-expired tokens, suspension,
+  missing/malformed/duplicate headers, cookie rejection and safe DB failure.
+  API-test typecheck passed. Initial Node 24.22.1 red run: all 16 failed with expected
+  404 because T046 has not registered the route; fixture preflight/setup/cleanup
+  succeeded, no unhandled errors. Post-revocation guarantees remain unverified until
+  implementation. Owner confirmed this red baseline on 2026-11-06; T046 is now validated.
 
-- [ ] T046 [US2] Wire current-session revocation into
+
+- [x] T046 [US2] Wire current-session revocation into
   `apps/api/src/modules/auth/auth.controller.ts` and
   `apps/api/src/modules/auth/auth.routes.ts`: `POST /auth/logout` returns 204 for an
   already-revoked supplied token; follow the reconciled contract for malformed headers.
+  Completed 2026-11-06 after owner red-baseline confirmation. Reuses readBearerToken
+  and restricted revokeSession; no active-session gate, idle renewal, cookie or
+  all-device revoke. Validates empty optional body/params/query, strips forged claims,
+  awaits DB completion before empty 204 and forwards failures to the safe handler.
+  Focused 16/16 pass with real local DB; full 303/303 across 27 files pass, exit 0,
+  no unhandled errors on installed Node 24.22.1. API source/test typechecks and
+  diff check pass. Mobile logout remains T047; native sign-out acceptance is T048.
 
-- [ ] T047 [US2] Implement remote logout with local cleanup in finally in
+
+- [x] T047 [US2] Implement remote logout with local cleanup in finally in
   `apps/mobile/lib/auth-context.tsx`, then wire `apps/mobile/app/index.tsx`. Handle
   SecureStore deletion errors explicitly rather than claiming a successful local logout.
+  Completed 2026-11-06: real remote logout followed by secure deletion in finally,
+  immediate identity hiding, coalesced taps and serialized cleanup behind in-flight
+  writes. Offline/timeout/server failure still removes the local token; login shows
+  that server sign-out was not confirmed. Failed deletion blocks sign-in/restoration
+  behind an accessible cleanup retry gate; retry is local-only and does not replay
+  logout. Existing approved neutral button treatment added to the Student landing.
+  Visually re-inspected login/sticker sheet; kept crest, layout and shared tokens.
+  Mobile/API-test typechecks pass. Full 312/312 tests in 28 files pass, exit 0 with
+  no unhandled errors on installed Node 24.22.1. Native visual/online/offline/storage
+  acceptance remains T048; emulator/Metro were stopped during this validation.
 
-- [ ] T048 [US2] Owner reruns `npm test -w apps/api` from the repository root and the
+
+- [x] T048 [US2] Owner reruns `npm test -w apps/api` from the repository root and the
   online/offline sign-out cases in `specs/001-user-login/quickstart.md`. Expected:
   local token removed, login visible, copied online-revoked token gets 401, second
   device remains signed in. On failure stop and report redacted evidence.
+  T048 completed (2026-11-06): full 312/312 tests in 28 files pass on installed
+  Node 24.22.1, no unhandled errors; API-test typecheck passes. Corrected only
+  local-test expiry fixtures to use PostgreSQL's clock after a host-clock deadline
+  unexpectedly remained valid; no production expiry behavior/schema changed.
+  Native online repeated-tap sign-out showed progress then login, and stayed at
+  login after force-close/reopen. With API stopped, native sign-out reached login
+  with unconfirmed-server copy; reopening while API remained stopped still reached
+  login, confirming local deletion. 360 dp / font scale 1.3 retained. Replay denial
+  and other-device/account isolation passed in real restricted-local-DB API tests;
+  no development bearer was extracted. Screenshots are local output/t048 artifacts.
+  After initially reporting TalkBack untested, owner performed the requested review
+  and confirmed all three announcements (Sign out, progress, unconfirmed-server
+  warning) passed, with API restarted. This is owner-confirmed accessibility evidence;
+  native secure-deletion fault injection is not claimed. US3 recovery remains separate.
+
 
 ---
 
@@ -628,29 +704,59 @@ session remains valid; offline logout clears local state and leaves remote expir
 **Independent Test**: Force-close/reopen restores a valid session; expired/revoked/
 fabricated tokens cause one login redirect with a session-ended notice.
 
-- [ ] T049 [US3] Write `apps/api/tests/auth/session.api.test.ts` for identical missing,
+- [x] T049 [US3] Write `apps/api/tests/auth/session.api.test.ts` for identical missing,
   expired, revoked, and unknown-token 401s; current account restrictions, safe response
   fields, permission denials, and cross-user isolation. Owner confirms expected failures.
   Include idle expiry, restore not renewing activity, and absolute expiry after foreground use.
+  Completed (2026-11-06): all 19 cases pass against the restricted disposable
+  database; full regression passes 331 tests in 29 files on installed Node 24.22.1.
+  API-test typecheck passes. Sandbox loopback access initially blocked preflight;
+  the permitted run connected successfully. Existing session behavior passed,
+  so there are no expected behavior failures requiring owner confirmation.
+  Permission/ownership denial cases use explicitly test-only routes around the real
+  auth wrapper; eligible users all have permission to read their own session.
 
-- [ ] T050 [US3] Complete startup restore in `apps/mobile/lib/auth-context.tsx`: read
+- [x] T050 [US3] Complete startup restore in `apps/mobile/lib/auth-context.tsx`: read
   SecureStore, avoid login-screen flicker, validate `/auth/session` in the background,
   clear invalid sessions, and handle offline/cold-start retries. Do not invent cached
   user claims on a cold launch; show a restoring/offline state when identity is unknown.
   Optimistic local navigation never authorizes protected data requests.
   Do not send heartbeat/renewal for restoration, background polling or merely foregrounding
   the app. Keep the token on recoverable network failure; clear it on confirmed 401.
+  Completed (2026-11-06): retained the T043 server-confirmed restore/retry gate,
+  coalesced concurrent startup/retry calls, and prevented stale storage reads from
+  starting confirmation after login/logout supersedes them. Six new cases cover
+  coalescing, delayed-read sign-out, and explicit recovery after network/timeout/
+  server/invalid-response failures. Full 337/337 tests in 29 files pass on installed
+  Node 24.22.1; mobile and API-test typechecks pass. No UI changes or heartbeat added.
+  Native cold-launch timing/recovery acceptance remains T053.
 
-- [ ] T051 [US3] Add one authenticated-request 401 invalidation handler in
+- [x] T051 [US3] Add one authenticated-request 401 invalidation handler in
   `apps/mobile/lib/api.ts` connected to `apps/mobile/lib/auth-context.tsx`; distinguish
   failed login credentials from expired sessions and prevent redirect loops/races.
+  Completed (2026-11-06): provider registers one transport handler capturing the
+  local session generation per authenticated request. Late 401s cannot invalidate
+  newer sign-ins; simultaneous rejections cause one secure cleanup. Login failures
+  bypass invalidation, and 403/5xx preserve the session. Cleanup is not awaited by
+  transport, avoiding a restore/cleanup queue deadlock; no requests are replayed.
+  Four new cases include real client/context restore and logout rejection wiring.
+  Full 341 tests in 29 files and mobile/API-test typechecks pass on Node 24.22.1.
+  Route-return and session-ended copy remain T052; native recovery remains T053.
 
-- [ ] T052 [US3] Preserve and validate an internal intended route in
+- [x] T052 [US3] Preserve and validate an internal intended route in
   `apps/mobile/app/login.tsx` and add accessible session-ended copy in
   `apps/mobile/features/auth/messages.ts`; reject external/unrecognized destinations,
   never put tokens in navigation URLs, and inspect approved designs before UI changes.
   Cover idle and absolute session-ended states with the same safe recovery; revalidate
   destination permissions and never automatically replay a mutation after re-login.
+  Completed (2026-11-06): Home guard passes only `/` as returnTo; login rejects
+  nonallowlisted destinations and rechecks current ACTIVE Student identity before
+  return. `/` is the only implemented protected route; no speculative routes added.
+  Restore/request rejection sets a memory-only session-ended notice using the existing
+  login notice styling, alert/live-region semantics and shared safe copy for idle/
+  absolute expiry. Successful login or explicit logout clears it. No mutation replay.
+  Approved login/sticker sheets inspected; new-state native review remains T053.
+  Full 343 tests in 29 files pass; mobile/API-test typechecks and graph update pass.
 
 - [ ] T053 [US3] Owner runs `npm test -w apps/api` from the repository root and expiry,
   offline restore, concurrent-401, re-login route-return, and force-close/reopen checks
@@ -658,33 +764,133 @@ fabricated tokens cause one login redirect with a session-ended notice.
   entry to restoring within 2 seconds; measure network confirmation and warm/cold API
   cases separately.
   Stop on failures or unmet targets and report evidence rather than marking complete.
+  In progress (2026-11-06): automated checkpoint rerun passes all 343 tests in
+  29 files on installed Node 24.22.1 (22.79 s, exit 0). Existing API/Metro ports
+  are reachable; ADB reports no device. Native recovery, launch timing, warm/cold
+  confirmation and new-notice accessibility remain unvalidated pending owner
+  reopening the emulator and entering the private synthetic credentials.
+  Device continuation: owner signed in; observed ACTIVE Student Home on Android
+  API 36.1 at 360 dp/font scale 1.3. Force-stop plus initial reopen showed launcher;
+  second reopen restored the saved session to Home without credentials. No crash-only
+  AndroidRuntime diagnostics were returned. This does not establish no-login-flash
+  or the two-second target. API-unavailable restore is awaiting owner stopping API.
+  API-unavailable continuation: owner stopped API; after the same initial-launch
+  anomaly and second open, observed branded confirmation-error/Try again state,
+  without protected identity or login. Screenshot: ignored `output/t053/offline-result.png`.
+  Owner restarted API and confirmed TalkBack retry message/button announcements
+  and return to Home without a password; agent subsequently observed Home. Offline
+  recovery passes. A diagnostic launch using Android's activity wait reached bundle
+  download (activity 1334 ms) and then Home; this is not a measurement of app restoring
+  state or network confirmation. Expo Go 58.0.5 development bundle download/startup
+  remains a timing limitation. Filtered startup-error diagnostics returned no matches.
+  Owner asked to leave session idle 31 minutes and reopen without re-login for native
+  expiry/notice verification. Native expiry, concurrent-401 transition, re-login return,
+  session-ended TalkBack, and valid launch/API timing measurements remain pending.
+  Owner subsequently confirmed expiry after 31 untouched minutes using Metro `r`
+  reload, TalkBack session-ended announcement, and re-login returning to Home with
+  notice cleared. These cases pass; reload does not establish actual force-close
+  behavior. Remaining native concurrent-401/launch timing checks stay open while
+  proceeding to independently useful documentation at the owner's request.
+  Resumed at owner request before T055: timed actual force-stop/open failed native
+  startup acceptance. Normal VIEW intent resolved Expo LauncherActivity and stayed
+  on Android launcher from 2288 through 5824 ms. Direct ExperienceActivity repeat
+  showed blank screens at 1705–3426 ms and later an Expo loading spinner, despite
+  API/Metro ports reachable. Filtered crash diagnostics returned no matching errors.
+  Timed screenshots are in ignored `output/t053/launch-frame-*.png` and
+  `direct-frame-*.png`. These are failed/unmet startup results, not a pass for the
+  two-second restoring target. Asked owner to open via Metro `a` and report safe
+  Metro errors to distinguish the supported connection path. T055 is untouched.
+  Owner reported Metro `a` also stays loading. Public manifest/bundle return 200
+  (6,578,948-byte bundle in 254 ms on host); existing adb reverse forwards 8081.
+  Forwarded localhost also stays on Expo's generic loader, before branded restore.
+  No auth code changed on this evidence. Asked owner to restart Metro with `--clear`
+  and reopen without deleting app data/saved session. Startup checkpoint remains open.
+  After owner Metro cache clear, existing Expo process still showed its updater.
+  Agent force-stopped/reopened through existing localhost forwarding: observed bundle
+  rebuild, then restored Home without credentials. Recovery succeeded without app-data
+  deletion or auth changes; startup timing is still unpassed. Native inspector upgrade
+  returned 401 (debugger authorization required), so no native concurrent check executed.
+  Prepared ignored `output/t053/native-console-check.js` for owner-authorized DevTools:
+  times one session lookup, revokes only current synthetic session, then sends three
+  real session checks; reports timing/status codes only. Pending owner execution.
+  Owner executed the native DevTools check: session confirmation 2680 ms, three
+  concurrent real server rejections `[401,401,401]` after current-session revocation.
+  Owner confirmed one stable login transition/no loop; supplied screenshot shows the
+  session-ended notice, empty fields and disabled Log in, at the existing large-text
+  TalkBack configuration. Native concurrent rejection recovery passes. The 2680 ms
+  is one session-confirmation sample (API/database warm state not established), not
+  cold-launch/restoring timing. Remaining acceptance is repeatable no-login-flash
+  startup within two seconds and separately classified warm/cold confirmation timing.
+  Physical-phone continuation: owner realme C51 (RMX3830), Android 15, Expo Go
+  58.0.5/SDK 58, same Wi-Fi. Emulator-only API URL caused login timeout; owner
+  verified LAN health and changed the public mobile API URL to the host LAN address,
+  restarted Metro and reached Home. Following force-stop/reopen instructions, owner
+  reported Checking your session in “no more than 3 seconds”, then Home, no login
+  flash. Functional phone restore passes; this bound cannot establish the <=2-second
+  target. Separate Home/network timing was not supplied. T053 remains unchecked.
+  Owner refined phone recording measurements: opening project to first Checking your
+  session frame = 2 seconds; restoring frame to first Home = 3 seconds; no login
+  flash. Cold app/warm running API sample meets restoring-entry target at equality.
+  The 3-second interval includes confirmation/rendering, not pure HTTP latency.
+  Fresh API-process timing remains separate; database warmth/latency not measured.
+  Final fresh-API-process comparison (owner phone recording): reported Checking your
+  session at 3 seconds and Home at 4 seconds, no login flash/error, following the
+  separate-interval instructions. Preserve those reported intervals; no finer timing
+  or pure HTTP measurement supplied. Restoring entry at 3 seconds exceeds the <=2 s
+  requirement. Functional recovery passes, but T053 timing acceptance FAILS this run
+  and remains unchecked. Database was not restarted; hosted scale-to-zero cold-start
+  performance and device/network workload guarantees are not inferred from this test.
 
 ---
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T054 [P] Write/update `docs/architecture/auth.md` with token flow, account
+- [x] T054 [P] Write/update `docs/architecture/auth.md` with token flow, account
   eligibility, permission gates/ownership, RLS runtime/bootstrap trust boundary,
   transaction-local pooled identity, audit append/verify protocol, concurrency,
   rate-limit limitations, TLS deployment requirements, and cold-start recovery.
+  Completed (2026-11-06): source-linked architecture guide added and linked from
+  docs/index.md; verified against current services, middleware, transport/context
+  and SQL boundary notes. Setup remains in README. Validation limitations clearly
+  distinguish automated/owner-confirmed results from T053/T059 pending acceptance.
 
-- [ ] T055 [P] Inspect existing ADR numbering in `docs/decisions/` before creating or
+- [x] T055 [P] Inspect existing ADR numbering in `docs/decisions/` before creating or
   updating an opaque-session decision note there; document approved RLS/audit decisions
   without overwriting unrelated ADRs. New notes require status/owner/milestone frontmatter.
+  Completed (2026-11-06): directory contained only .gitkeep; created ADR-0001 for
+  approved opaque sessions, transaction-local RLS/bootstrap trust and serialized audit
+  integrity. Linked from docs/index.md and auth architecture. No policy/specification
+  change; T053 startup/timing and T059 acceptance limitations remain explicit.
 
-- [ ] T056 [P] Document deferred content-only WebView handoff in
+- [x] T056 [P] Document deferred content-only WebView handoff in
   `docs/architecture/webview-strategy.md`: single-use exchange code, no bearer token
   in URLs, native auth preserved; do not implement the handoff in this feature.
+  Completed (2026-11-06): deferred strategy linked from docs/index.md and auth guide.
+  Records R11's 60-second user-bound single-use exchange and clean redirect, preserves
+  native authentication, and lists cookie/origin/revocation/concurrency decisions
+  required for the future feature. No endpoint, migration, dependency or UI added.
 
-- [ ] T057 Update `specs/001-user-login/quickstart.md` after owner approval with
+- [x] T057 Update `specs/001-user-login/quickstart.md` after owner approval with
   runtime-role RLS tests, audit privilege/integrity/concurrency checks, limiter/body
   boundaries, permission denials, SecureStore failures, and warm/cold session recovery.
   Keep actual setup commands in `README.md` and link rather than duplicate them.
+  Completed (2026-11-06), owner requested implementation: reconciled historical/current
+  counts and T031 status, added runtime/audit/limiter/permission/storage matrices and
+  warm/cold timing protocol with owner/agent evidence boundaries. Moved duplicated
+  runtime/dev/display commands to README T057; no setup/test execution for this docs
+  change. T053 startup/timing and T059 final acceptance remain explicitly open.
 
-- [ ] T058 Review `apps/api/src/`, `apps/mobile/lib/`, and
+- [x] T058 Review `apps/api/src/`, `apps/mobile/lib/`, and
   `apps/api/prisma/migrations/` for leaked secrets/hashes, bypassable authorization,
   unsafe raw SQL, privileged runtime roles, forged identity context, and audit mutation
   privileges. Verify exported APIs have required JSDoc and workaround sources.
+  Completed (2026-11-06): scoped source/migration review recorded in
+  docs/architecture/auth-security-review.md and linked in docs/index.md. Fixed failed
+  automatic-invalidation deletion bypassing the local cleanup gate; retry remains
+  local-only and preserves ended-session copy. Added regression and expanded short
+  export comments. No SQL/cloud/environment changes. Full 344 tests/29 files, API
+  source/API-test/mobile typechecks, graph update and diff checks pass. T053 timing
+  failure remains owner-deferred; deployed security/performance acceptance is T059.
 
 - [ ] T059 Owner runs final `npm test -w apps/api` from the repository root and all
   acceptance scenarios in `specs/001-user-login/quickstart.md`; include Argon2id/login
@@ -692,15 +898,38 @@ fabricated tokens cause one login redirect with a session-ended notice.
   and targets met. Stop on failure; record limitations before demonstration/deployment.
   Measure NFR 1 request/page targets separately from the human login journey under agreed
   normal-network/workload conditions. Browser compatibility awaits its delivery-scope decision.
+  In progress (2026-11-06): final local rerun passes 344 tests/29 files (21.77 s,
+  exit 0, no unhandled errors) on installed Node 24.22.1. Shared/API/API-test/mobile
+  typechecks all pass. Existing synthetic no-DB Argon2 benchmark repeated after tests
+  finished: known median 19.1 ms/max 20.1 ms; unknown median 19.0 ms/max 19.4 ms
+  (10 sequential samples each, local workstation). Earlier concurrent-with-tests
+  diagnostic was slower and is not used as the idle benchmark. These measurements
+  prove neither constant-time responses nor full login/deployment performance.
+  Owner reports only Supabase has been configured; no API deployment identified.
+  Deployment-host Argon2/login timings therefore remain unavailable. T053's 3-second
+  restoring entry versus 2-second target remains owner-deferred, not waived. No new
+  deployment, infrastructure, work-factor change or acceptance pass is implied.
 
-- [ ] T060 Update `docs/index.md` status/next-up and link new architecture/decision
+- [x] T060 Update `docs/index.md` status/next-up and link new architecture/decision
   notes; update `README.md` for the implemented public modules and owner-run commands.
   Keep documentation status consistent with actual owner-confirmed validation.
+  Completed (2026-11-06): replaced stale scaffold/current-status claims in index and
+  README, linked architecture/ADR/deferred handoff/security review, and documented
+  implemented public modules and existing owner-run command location. Current summary
+  records 344 tests/all four typechecks, T053 deferred timing failure and T059 missing
+  deployment-host acceptance. Historical checkpoints remain labeled; no code/setup
+  changes or new test run for this documentation-only task. Next checkpoint is T061.
 
-- [ ] T061 Refresh `graphify-out/graph.json` after implementation using
+- [x] T061 Refresh `graphify-out/graph.json` after implementation using
   `graphify update .` from the repository root; no installs/bootstrap. Expected: graph
   update succeeds and reflects changed code. If unavailable/failing, stop and give the
   owner the exact command and error without installing tools.
+  Completed (2026-11-06): `graphify update .` succeeded from repository root, exit 0;
+  graph.json/graph.html/GRAPH_REPORT.md rebuilt with 1348 nodes, 2334 links and 144
+  communities. JSON parses; createAuthState query resolves current source locations,
+  provider/cleanup helpers and related tests. Diff check passes. Code AST refresh only;
+  Markdown/image semantic extraction and LLM community relabeling were not run. No
+  installs, bootstrap, schema/environment changes or new acceptance-test run.
 
 ---
 

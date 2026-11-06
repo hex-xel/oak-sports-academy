@@ -6,6 +6,187 @@ milestone: 1
 
 # Authentication data layer
 
+## T052 recovery destination and notice completed (2026-11-06)
+
+The protected Home guard preserves `/` through a returnTo parameter. Login accepts
+only that implemented protected route, discards external/unknown/query-bearing or
+array input, and checks current server-confirmed ACTIVE Student identity before
+redirecting. Protected API calls retain independent backend authorization. Failed
+actions are never replayed after re-login. Future protected routes must explicitly
+extend this allowlist and their authorization checks.
+
+Confirmed restore/request rejection sets a memory-only sessionEnded flag. The login
+notice uses shared safe copy for idle/absolute expiry and revocation, with existing
+design tokens, alert semantics and a polite live region. Successful sign-in and
+explicit logout clear it; initial missing-token startup does not show it. Full 343
+tests in 29 files and mobile/API-test typechecks pass. Native recovery, launch timing
+and notice accessibility acceptance remain T053.
+
+## T051 authenticated rejection handling completed (2026-11-06)
+
+AuthProvider registers a single API-client rejection handler and removes its own
+registration on unmount. Each authenticated request captures its local session
+generation. A 401 hides identity immediately and queues secure cleanup; concurrent
+rejections coalesce, and an older request cannot clear a newer sign-in. Credential
+login failures, permission denials, and server/network failures do not invalidate
+the session. Missing or malformed saved bearer values also fail closed locally.
+Transport does not await cleanup: restoration may already own the serialization
+queue while awaiting that same request. Cleanup failure remains visible through
+auth storage-error state. No mutation replay or new navigation is introduced.
+Four added cases bring the passing suite to 341 tests in 29 files; mobile/API-test
+typechecks pass. T052 owns intended-route recovery/copy and T053 native acceptance.
+
+## T050 startup restoration completed (2026-11-06)
+
+Startup keeps identity unknown behind the existing SessionGate until SecureStore
+and the nonrenewing session endpoint confirm it. Missing/rejected tokens lead to
+sign-in; recoverable confirmation failures preserve the saved token and expose
+explicit retry. Concurrent restore/retry calls share one operation. A newer
+login/logout suppresses stale lookup/publication, including after a delayed read.
+No heartbeat, cached identity persistence, or UI change was introduced. Six added
+regressions bring the passing suite to 337 tests in 29 files; mobile/API-test
+typechecks pass. Native launch timing and recovery acceptance remain T053.
+
+## T049 session API coverage completed (2026-11-06)
+
+The production session endpoint now has 19 HTTP/restricted-database cases covering
+uniform unauthenticated responses, current account restrictions and identity,
+safe response fields, isolation, idle/absolute expiry, and nonrenewing restoration.
+Permission/ownership denial and audit cases use explicitly test-only routes around
+the production auth wrapper, because all eligible users can read their own session.
+Foreground expiry coverage uses controlled database-clock row aging rather than
+waiting eight hours. All 331 tests in 29 files and the API-test typecheck pass on
+installed Node 24.22.1. T050-T053 mobile recovery work remains separate.
+
+## T048 native acceptance completed (2026-11-06)
+
+Online and API-unavailable sign-out/relaunch passed on the existing 360 dp Android
+emulator with font scale 1.3. Agent observed progress, clean login, accurate remote-
+unconfirmed copy, and login after reopening while API remained unavailable. This
+verifies native local deletion without relying on a server-side token rejection.
+Replay denial and other-device isolation have real restricted-local-DB API evidence;
+no real development bearer was extracted. Local screenshots are in ignored output/t048.
+Owner initially reported TalkBack untested, then performed the requested review and
+confirmed the Sign out button, progress and unconfirmed-server warning were all
+announced, with API restarted. T048 is complete. These audio results are owner-confirmed,
+not agent-measured. Native storage fault injection is not claimed; failure/retry tests
+use secure-store adapters. US3 session recovery acceptance remains separate.
+
+The T048 regression rerun passed all 312 tests in 28 files on installed Node 24.22.1,
+exit 0/no unhandled errors, with API-test typecheck passing. An initial HTTP idle-expiry
+test unexpectedly returned 200 when its deadline came from host Date.now. Local expiry
+fixtures now use PostgreSQL clock_timestamp/relative intervals, matching the server's
+clock authority and avoiding host/VM clock assumptions. No production expiry logic,
+schema, policy or test assertion was loosened.
+
+## T047 mobile sign-out (implemented 2026-11-06; T048 completed above)
+
+AuthProvider now exposes remote signOut and explicit retryLogoutCleanup, separately
+from local-only invalidateSession. Sign-out immediately removes visible identity,
+coalesces repeated calls and queues behind outstanding secure writes. It invokes the
+bounded current-session API request while the stored token is still present and
+always attempts deletion in finally. Generation checks suppress stale restore/write
+results. Sign-in/restoration are blocked while logout or failed cleanup owns storage.
+A future 401 callback can request local invalidation without waiting on its own remote
+logout request and deadlocking it.
+
+Remote/network/timeout failure does not prevent local cleanup. After successful local
+deletion, login may explain that server sign-out could not be confirmed and the remote
+session may remain active until expiry. The API client requires the contract's 204;
+a non-contract 200 is not treated as confirmation. Native/server diagnostic details
+are discarded. A failed delete rejects with TokenStorageError and retains a cleanup
+failure gate on both Home/login. It does not claim successful local logout. The explicit
+retry deletes only the local token; it coalesces taps and retains any remote warning.
+
+The landing uses the sticker sheet's neutral logout treatment through the existing
+PrimaryButton and existing shared gray/navy tokens. SessionGate reuses the official
+crest, typography/spacing and live announcements for pending/failure/retry states.
+The approved login and sticker-sheet images were visually re-inspected before edits;
+full Home content/navigation remains separate. The current emulator and Metro were
+stopped, so no rendered T047/native device pass is claimed.
+
+Eight new lifecycle tests cover ordering/coalescing, remote network/timeout/server
+failures, local failure/retry, simultaneous failures, pending secure write and stale
+restore/401 races. One transport test rejects a non-204 logout success. Full regression:
+312 tests in 28 files pass using installed Node 24.22.1, exit 0/no unhandled errors.
+Mobile and API-test typechecks pass. T048 must exercise real online/offline sign-out,
+relaunch, another-device independence and 360 dp/large-text/TalkBack feedback. No package,
+setup, schema, grant/policy or cloud configuration change was made.
+
+## T045-T046 current-session logout (validated 2026-11-06)
+
+Owner confirmed the 16-test red baseline before T046 implementation. Production
+`POST /api/v1/auth/logout` now uses readBearerToken and the existing restricted
+revokeSession service. It requires exactly one well-formed native Bearer header;
+missing/malformed/duplicate headers and cookie-only requests return safe 401. Body,
+query and path objects are validated with unknown claims stripped. No supplied
+userId, role, sessionToken or allDevices flag can select another session.
+
+The controller awaits revocation before emitting empty 204, without cookies or
+activity renewal. It intentionally does not require a currently active session:
+unknown, revoked, idle/absolute-expired and suspended-owner tokens must remain
+revocable/idempotent under the approved contract. Database failures reach the safe
+500 boundary instead of falsely claiming successful revocation. Route dependency
+loading remains lazy, preserving environment/database-free app construction.
+
+All 16 production HTTP/guarded-local-DB tests pass: committed revocation and immediate
+replay denial, repeated/unknown-token behavior, other-device/cross-account isolation,
+expired and suspended cases, forged claims, header/cookie denial and safe DB failure.
+Full regression: 303 tests across 27 files, exit 0, no unhandled errors using installed
+Node 24.22.1. API source/test typechecks pass. No migration, grant/policy, runtime-role
+change, package install or cloud account mutation was required. Mobile cleanup/UI is
+T047 and device sign-out acceptance remains T048. Earlier T044's 287-test pass is
+historical; the current suite includes the 16 logout tests and is green.
+
+## T044 acceptance (2026-11-06)
+
+Initial native sign-in acceptance passed. See the feature UI state checklist for direct
+agent observations versus owner keyboard/TalkBack confirmation at 360 dp and font 1.3.
+The real app reached ACTIVE Student landing; after reopening it showed server-returned
+identity, exercising native persistence and confirmation. Later logout and full US3
+invalidation/recovery remain separate. No native storage-failure injection or performance
+measurement is claimed.
+
+The unchanged 287-test suite passed under installed Node 24.22.1. System Node 24.15.0
+intermittently exited HTTP workers. Listener/thread-pool experiments were reverted;
+existing forks/serial isolation/assertions are retained. Quickstart records the exact
+passing command. Metro's scoped shared-source ESM resolver was verified by actual Android
+bundle success. A clean Expo launch recovered one native initialization error after
+emulator display changes; no speculative dependency alias or package change was retained.
+
+## T041-T043 HTTP and mobile integration (2026-11-05)
+
+Production routes register native login with IP/email quotas and session lookup through
+requireAuth(SELF_READ), self ownership and transaction-scoped runtime RLS. Lookup selects
+only safe identity/expiry and never renews idle activity or returns token/hash data.
+Controllers reject duplicate native headers, validate input and project output. Dynamic
+controller imports preserve environment/database-free app construction. No cookies,
+privileged fallback, schema changes, retries or entitlement writes are introduced.
+
+useLogin locks repeated taps immediately, makes one bounded explicit attempt, awaits
+secure persistence before signedIn, and exposes safe failure and Retry-After countdown.
+Email survives failure. Removed Remember Me under the owner's proper-UX condition because
+persistence is automatic and the approved spec defines no selectable behavior. Generic
+credential errors use the existing form-level styling. The approved crest/layout and
+keyboard avoidance remain; minimum-width overflow within 360 dp padding was removed.
+
+Real context gates routes; saved tokens need bounded server confirmation. Offline/timeout
+preserves tokens with retry, 401 clears them, and failed cleanup exposes storage retry.
+Generation checks prevent stale confirmation from restoring invalidated identity. This
+brings forward part of T050 to avoid indefinite restoring when mounting T036; full US3
+request-associated invalidation and device acceptance remain open. Remote logout is T047;
+the misleading scaffold logout action was removed. Home is only a protected landing
+placeholder; full Home content/menu remains dependent work.
+
+Validation: all four typechecks passed; 287 tests in 26 files passed under explicit test
+authorization, including production HTTP against guarded local restricted DB fixtures.
+Checks cover safe projection, nonrenewing lookup, unknown/revoked/idle-expired tokens,
+current suspension, malformed Bearer headers, offline preservation and stale restoration.
+T044 Android design, keyboard, assistive-technology and native SecureStore acceptance
+remains owner-run. No cloud changes, installs, setup or migrations.
+
+The T035-T040 notes below record the earlier foundation stage and its then-red HTTP suite.
+
 ## T035–T040 client foundations and native login service
 
 The mobile api client uses app.config.ts public EXPO_PUBLIC_API_URL/extra.apiUrl,

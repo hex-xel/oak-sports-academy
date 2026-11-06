@@ -5,7 +5,7 @@ vi.mock("../../src/modules/auth/auth.service.js", () => ({ login: service.login 
 import { createApp, type AppRuntime } from "../../src/app.js";
 import { ApiError } from "../../src/middleware/error-handler.js";
 
-// T038 is intentionally red until T041 mounts the production controller/routes.
+// Exercise production route/controller wiring while isolating credential orchestration.
 const runtimes: AppRuntime[] = [];
 function fresh() { const runtime = createApp(); runtimes.push(runtime); return runtime; }
 const payload = { email: "synthetic@example.test", password: "x" };
@@ -14,7 +14,7 @@ const success = { user: { id: "00000000-0000-4000-8000-000000000001", email: pay
 beforeEach(() => { service.login.mockReset().mockResolvedValue(success); });
 afterEach(() => { runtimes.splice(0).forEach((runtime) => runtime.close()); });
 const post = (runtime: AppRuntime) => request(runtime.app).post("/api/v1/auth/login").set("X-Client-Platform", "mobile");
-describe("production native login HTTP contract (T041 dependency)", () => {
+describe("production native login HTTP contract", () => {
   it("returns safe native 200 JSON without cookies", async () => {
     const res = await post(fresh()).send(payload);
     expect(res.status).toBe(200);
