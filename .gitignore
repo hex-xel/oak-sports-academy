@@ -26,6 +26,28 @@ Thumbs.db
 .icm/
 graphify-out/cache/
 
+# Other assistants (keep .codex/, shared .agents/, and DeepSeek .dsh/)
+/.augment/
+/.claude/
+/.codebuddy/
+/.codewhale/
+/.continue/
+/.crush/
+/.cursor/
+/.factory/
+/.gemini/
+/.kilocode/
+/.kiro/
+/.opencode/
+/.qoder/
+/.qwen/
+/.roo/
+/.trae/
+/.warp/
+/.windsurf/
+# Preserve GitHub workflows and project instructions.
+/.github/skills/
+
 # Obsidian per-user state and generated graph notes
 docs/.obsidian/
 docs/graph/
