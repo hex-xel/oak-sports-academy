@@ -7,6 +7,8 @@ build/
 .env
 .env.*
 !.env.example
+!.env.test.example
+!.env.seed.example
 
 # Python
 __pycache__/
@@ -19,3 +21,19 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local AI tooling state
+.icm/
+graphify-out/cache/
+
+# Obsidian per-user state and generated graph notes
+docs/.obsidian/
+docs/graph/
+
+# Personal tooling reference 
+/TOOLING.md
+
+/WORKFLOW.md
+
+# Owner-approved private audit artifacts
+/output/security-audit/

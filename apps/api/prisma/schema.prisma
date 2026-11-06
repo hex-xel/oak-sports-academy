@@ -1,0 +1,94 @@
+// Source: specs/001-user-login/data-model.md, approved T016 alignment (2026-11-02).
+// SQL policies, grants, and CHECK constraints are added in T019; Prisma models alone
+// do not enforce RLS, append-only audit access, or lowercase hexadecimal hashes.
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+/// Server-assigned roles; permissions never come from client-submitted role names.
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+/// Academy approval changes PENDING_APPROVAL to ACTIVE; email verification is separate.
+enum AccountStatus {
+  ACTIVE
+  PENDING_APPROVAL
+  SUSPENDED
+}
+
+/// Account holder, separate from future participant/guardian profile records.
+model User {
+  id              String        @id @default(uuid()) @db.Uuid
+  email           String        @unique
+  passwordHash    String
+  displayName     String?
+  role            Role          @default(STUDENT)
+  status          AccountStatus @default(PENDING_APPROVAL)
+  emailVerifiedAt DateTime?
+  lastSignInAt    DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  sessions        Session[]
+
+  @@index([role])
+  @@map("users")
+}
+
+/// Only the token hash is persisted; expiry and revocation are enforced by the service.
+model Session {
+  id         String    @id @default(uuid()) @db.Uuid
+  tokenHash  String    @unique @db.Char(64)
+  userId     String    @db.Uuid
+  expiresAt  DateTime
+  lastActivityAt DateTime @default(now())
+  idleExpiresAt DateTime
+  revokedAt  DateTime?
+  ipAddress  String?   @db.VarChar(45)
+  userAgent  String?   @db.VarChar(255)
+  createdAt  DateTime  @default(now())
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("sessions")
+}
+
+/// Standalone attempts include unknown emails, so no required User relation is present.
+model SignInAttempt {
+  id         String   @id @default(uuid()) @db.Uuid
+  email      String
+  ipAddress  String   @db.VarChar(45)
+  succeeded  Boolean
+  createdAt  DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([ipAddress, createdAt])
+  @@map("sign_in_attempts")
+}
+
+/// Historical actor/target IDs intentionally have no cascading foreign keys.
+/// Unique previousHash prevents two records linking to the same predecessor.
+model AuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  timestamp    DateTime @default(now()) @db.Timestamptz(3)
+  userId       String   @db.Uuid
+  action       String
+  targetEntity String
+  targetId     String
+  payloadHash  String   @db.Char(64)
+  previousHash String   @unique @db.Char(64)
+  currentHash  String   @unique @db.Char(64)
+
+  @@index([timestamp])
+  @@map("audit_logs")
+}

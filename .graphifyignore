@@ -1,0 +1,18 @@
+# Tooling and agent configuration — not project knowledge.
+# Without this, graphify scans every spec-kit skill, template and hook file.
+.claude/
+.codex/
+.agents/
+.opencode/
+.cursor/
+.dsh/
+.github/
+.specify/
+.icm/
+
+# Agent instruction files are generated/edited by graphify and ICM.
+AGENTS.md
+CLAUDE.md
+
+# Personal tooling notes, not project knowledge.
+TOOLING.md

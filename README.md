@@ -5,9 +5,11 @@ Oak Sports Academy Taguig Branch. It will centralize the registration and
 training-management activities that are currently handled through Google Forms
 and manual staff processes.
 
-> **Project status:** Planning and research. The repository structure and this
-> overview are in place; application features, architecture artifacts, and
-> prototype benchmark code have not yet been implemented.
+> **Project status (2026-11-06):** Native Student login, secure session recovery and
+> sign-out are implemented. Latest local validation: 344 tests in 29 files and all four
+> typechecks pass. Startup timing and deployment/final acceptance remain open;
+> no deployed API host has been identified. See
+> [the project index](docs/index.md) and [login tasks](specs/001-user-login/tasks.md).
 
 ## Project goals
 
@@ -38,13 +40,13 @@ visitors.
 | File storage | Private Supabase Storage buckets |
 | Testing | Vitest, Supertest, and, if time permits, Playwright |
 
-These choices are the approved project baseline. Dependencies and application
-code will be added only as development begins.
+These choices are the approved project baseline. The API/mobile authentication slice
+is implemented; the remaining product features follow their own specifications.
 
 ## Repository layout
 
 ```text
-apps/                       Future client and API applications
+apps/                       Client and API applications
   api/                      Express API
   mobile/                   React Native and Expo app
   web/                      Next.js public website and admin dashboard
@@ -65,9 +67,34 @@ specs/                      Approved project requirements
 Folders marked as future are intentionally empty scaffolds. They do not imply
 that the corresponding feature, design, or benchmark has been completed.
 
+## Implemented authentication modules
+
+| Module | Purpose and usage |
+| --- | --- |
+| [API auth](apps/api/src/modules/auth/auth.routes.ts) | Native POST `/api/v1/auth/login`, GET `/api/v1/auth/session`, POST `/api/v1/auth/logout`; validate/project requests and responses before service calls |
+| [Protected transactions](apps/api/src/middleware/require-auth.ts) | Configure server permission bits, ownership and activity classification; use only the supplied scoped transaction inside protected work |
+| [Session database context](apps/api/src/lib/prisma.ts) | Restricted runtime Prisma client and verified transaction-local identity; migration credentials never enter request processing |
+| [Audit service](apps/api/src/modules/audit/audit.service.ts) | Append safe server events atomically with authorized mutations; verify complete link-ordered chain snapshots |
+| [Mobile transport](apps/mobile/lib/api.ts) | Explicit bounded requests, header bearer, no mutation replay and provider-owned 401 handling |
+| [Mobile lifecycle](apps/mobile/lib/auth-context.tsx) | Secure write before sign-in, unknown-identity restore/retry, generation-safe invalidation and remote logout with local cleanup |
+| [Secure storage](apps/mobile/lib/token-store.ts) | Token-only Expo SecureStore adapters; propagate safe failures without insecure fallback |
+| [Shared contracts](packages/shared/src/index.ts) | Safe auth DTOs, error codes and centralized role permissions |
+
+Login requires verified ACTIVE Student credentials and the exact native transport
+header. Session/logout use one Bearer header; browser cookie authentication is not
+implemented. The native header is not an identity credential. See the
+[architecture guide](docs/architecture/auth.md), [ADR-0001](docs/decisions/ADR-0001-opaque-sessions.md),
+[scoped security review](docs/architecture/auth-security-review.md) and
+[deferred WebView design](docs/architecture/webview-strategy.md).
+
+Use the [development guide](docs/development.md) for commands. Review scenarios are in the
+[acceptance guide](specs/001-user-login/quickstart.md); task progress and historical
+evidence belong in the [task list](specs/001-user-login/tasks.md) and
+[checkpoint archive](docs/architecture/auth-checkpoint-history.md).
+
 ## Development workflow
 
-1. Review `requirements.md` and the applicable specification before making changes.
+1. Review `specifications.md` and the applicable feature specification before making changes.
 2. Create focused work on a feature branch; do not push unreviewed work
    directly to `main`.
 3. Keep credentials and real client data out of the repository.

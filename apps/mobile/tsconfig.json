@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    /* React Native uses Babel, not tsc, to emit JS.
+       We keep module/moduleResolution as bundler so tsc only type-checks. */
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-native",
+    "noEmit": true,
+    "skipLibCheck": true,
+    /* @shared/* path relative to this app */
+    "paths": {
+      "@shared/*": ["../../packages/shared/src/*"]
+    }
+  },
+  "include": ["app.config.ts", "app/**/*", "components/**/*", "features/**/*", "lib/**/*"],
+  "exclude": ["node_modules"]
+}

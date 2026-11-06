@@ -1,0 +1,241 @@
+openapi: 3.1.0
+info:
+  title: Oak Sports Academy — Authentication API (mobile login slice)
+  version: 0.3.0
+  description: |
+    Login, session lookup, and logout for the native Android student app.
+
+    **Transport**: the session token is returned in the login response body and sent as
+    `Authorization: Bearer <token>`. No cookie is issued by this version. A browser client
+    (staff/admin web, next feature) will add a cookie transport without changing these
+    service semantics.
+
+    Registration, email verification, and password recovery are separate features.
+servers:
+  - url: /api/v1
+paths:
+  /auth/login:
+    post:
+      summary: Sign in with email and password
+      operationId: login
+      tags: [Auth]
+      parameters:
+        - name: X-Client-Platform
+          in: header
+          required: true
+          description: Must be `mobile`. Guards against handing a bearer token to an unknown client.
+          schema:
+            type: string
+            const: mobile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Signed in.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Malformed body, invalid fields, or missing/incorrect client header.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unsupportedClient:
+                  value: { code: UNSUPPORTED_CLIENT, message: "This client is not supported." }
+        '401':
+          description: Wrong password **or** unknown email — identical response for both.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: |
+            Credentials were correct but the account cannot sign in. Returned only after
+            password verification. Unverified, PENDING_APPROVAL, and SUSPENDED accounts
+            receive no session; pending accounts must become ACTIVE through approval.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: JSON body exceeds the 10 kB limit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded.
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+              description: Seconds until the next attempt is accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Unexpected server error; no internal detail is returned.
+
+  /auth/session:
+    get:
+      summary: Return the signed-in user for the current token
+      operationId: getSession
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current session details.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '401':
+          description: Missing, expired, revoked, or unknown token — all identical.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/logout:
+    post:
+      summary: Revoke the current session
+      operationId: logout
+      tags: [Auth]
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Current session revoked; well-formed expired, unknown, or already-revoked Bearer tokens also return 204.
+        '401':
+          description: Missing or malformed authorization header.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+
+  schemas:
+    LoginRequest:
+      type: object
+      additionalProperties: true
+      description: Unknown properties are accepted and stripped before use; they cannot alter account state.
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 3
+          maxLength: 254
+          example: student@example.com
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+          writeOnly: true
+
+    LoginResponse:
+      type: object
+      required: [user, landingPath, sessionToken, expiresAt]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserSummary'
+        landingPath:
+          type: string
+          const: /
+          description: App route for the student home screen.
+        sessionToken:
+          type: string
+          description: |
+            Opaque session token. Stored only in Expo SecureStore; sent as a Bearer token.
+            Never logged, never placed in a URL.
+        expiresAt:
+          type: string
+          format: date-time
+
+    SessionResponse:
+      type: object
+      required: [user, landingPath, expiresAt]
+      properties:
+        user:
+          $ref: '#/components/schemas/UserSummary'
+        landingPath:
+          type: string
+          const: /
+        expiresAt:
+          type: string
+          format: date-time
+
+    UserSummary:
+      type: object
+      required: [id, email, role, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: [string, 'null']
+        role:
+          type: string
+          enum: [STUDENT, ADMIN]
+        status:
+          type: string
+          enum: [ACTIVE, PENDING_APPROVAL, SUSPENDED]
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - UNSUPPORTED_CLIENT
+            - INVALID_CREDENTIALS
+            - EMAIL_NOT_VERIFIED
+            - ACCOUNT_SUSPENDED
+            - ACCOUNT_PENDING_APPROVAL
+            - FORBIDDEN
+            - PAYLOAD_TOO_LARGE
+            - RATE_LIMITED
+            - UNAUTHENTICATED
+            - INTERNAL_ERROR
+        message:
+          type: string
+          description: Safe for display; never contains internal details.
+        details:
+          type: object
+          description: Field-level validation messages only; omitted otherwise.
+x-contract-rules:
+    - This is the target contract; STUDENT migration and idle enforcement await T063-T065.
+    - Native student login admits STUDENT only; Administrator browser transport is a separate feature. Legacy STAFF has no supported login path.
+    - Verified approved and enrolled students share landingPath / and student navigation; package entitlement checks remain independent.
+    - Sessions expire after 30 idle minutes or eight hours absolute, whichever occurs first; expiresAt denotes the absolute cap, not guaranteed remaining validity.
+    - Only successful authenticated user-initiated protected operations may renew idle expiry, never beyond expiresAt; restore lookup and background polling do not renew it.
+    - Idle-expired tokens receive the same 401 UNAUTHENTICATED as other expired tokens; exact-boundary checks are server-authoritative.
+    - Unknown email and wrong password return identical 401 INVALID_CREDENTIALS with comparable verification work.
+    - Account verification and approval errors follow correct password verification only.
+    - Only verified ACTIVE accounts receive sessions; PENDING_APPROVAL returns 403 ACCOUNT_PENDING_APPROVAL.
+    - sessionToken appears only in the login response; never in session lookup, logs, or URLs.
+    - Missing, expired, revoked, or unknown tokens return identical 401 UNAUTHENTICATED on session lookup.
+    - Logout requires a well-formed Bearer header; missing or malformed is 401, otherwise invalid or revoked is 204.
+    - Login requires X-Client-Platform mobile, otherwise 400 UNSUPPORTED_CLIENT; no Set-Cookie is issued.
+    - Global 100 per 15 minute IP baseline complements login 10 per IP and 5 per normalized email with Retry-After.
+    - Protected routes use server-loaded permissions, ownership checks, and runtime-role RLS.
