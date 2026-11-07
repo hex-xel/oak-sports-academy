@@ -2,7 +2,9 @@
   "name": "@oak/api",
   "version": "0.0.1",
   "private": true,
-  "prisma": { "seed": "node --import tsx prisma/seed.ts" },
+  "prisma": {
+    "seed": "node --import tsx prisma/seed.ts"
+  },
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
@@ -20,6 +22,7 @@
     "express": "^4.21.0",
     "express-rate-limit": "^7.4.0",
     "helmet": "^8.0.0",
+    "sharp": "0.35.5",
     "zod": "^3.23.0"
   },
   "devDependencies": {

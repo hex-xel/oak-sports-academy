@@ -1,5 +1,5 @@
 import { randomBytes, randomUUID } from "node:crypto";
-import { PrismaClient, type Prisma } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import { withSession } from "../../src/lib/prisma.js";
 import { hashPassword } from "../../src/modules/auth/password.service.js";
 
@@ -33,11 +33,15 @@ export function createSecurityDatabase(options: { concurrency?: boolean } = {}) 
   const actor = { id: randomUUID(), displayName: "Synthetic Administrator" };
   const aliceOtherSession = { id: randomUUID() };
   const bobSession = { id: randomUUID() };
-  const ids = [alice.id, bob.id, actor.id];
+  const ids: string[] = [alice.id, bob.id, actor.id];
   const emails = ids.map((id) => `${id}@example.test`);
+  const registrationOperations: string[] = [];
   const hashes = new Map<string, string>(ids.map((id) => [id, randomBytes(32).toString("hex")]));
   let ready = false;
   let digest: string;
+  // Children first; SQL identifiers are fixed here, never supplied by a test/request.
+  const registrationChildren = ["email_deliveries", "trial_assessments", "registration_documents",
+    "consent_evidence", "student_profiles", "registration_capabilities", "email_verification_challenges"] as const;
 
   async function clean(): Promise<void> {
     await admin.$transaction(async (tx) => {
@@ -48,7 +52,30 @@ export function createSecurityDatabase(options: { concurrency?: boolean } = {}) 
         tx.signInAttempt.count({ where: { email: { notIn: emails } } }),
       ]);
       if (outsiders.some((count) => count !== 0)) throw new Error("Unexpected sandbox records; cleanup refused.");
+      const applications = await tx.registrationApplication.findMany({ select: { id: true, userId: true } });
+      if (applications.some((row) => !ids.includes(row.userId))) {
+        throw new Error("Unexpected registration records; cleanup refused.");
+      }
+      if (await tx.registrationDecoyFlow.count({ where: { startOperationId: { notIn: registrationOperations } } }) !== 0) {
+        throw new Error("Unexpected decoy flow; cleanup refused.");
+      }
+      // Check every child table before deleting anything. Never clean another fixture's
+      // application merely because its account shares a synthetic email suffix.
+      for (const table of registrationChildren) {
+        const counts = await tx.$queryRaw<Array<{ count: bigint }>>(Prisma.sql`
+          SELECT count(*) AS count FROM ${Prisma.raw(`public.${table}`)}
+          WHERE "applicationId" NOT IN (SELECT id FROM public.registration_applications
+            WHERE "userId"::text IN (${Prisma.join(ids)}))`);
+        if (counts[0]?.count !== 0n) throw new Error("Unexpected registration children; cleanup refused.");
+      }
       await tx.auditLog.deleteMany({ where: { userId: { in: ids } } });
+      await tx.registrationDecoyFlow.deleteMany({ where: { startOperationId: { in: registrationOperations } } });
+      for (const table of registrationChildren) {
+        await tx.$executeRaw(Prisma.sql`DELETE FROM ${Prisma.raw(`public.${table}`)}
+          WHERE "applicationId" IN (SELECT id FROM public.registration_applications
+            WHERE "userId"::text IN (${Prisma.join(ids)}))`);
+      }
+      await tx.registrationApplication.deleteMany({ where: { userId: { in: ids } } });
       await tx.signInAttempt.deleteMany({ where: { email: { in: emails } } });
       await tx.session.deleteMany({ where: { userId: { in: ids } } });
       await tx.user.deleteMany({ where: { id: { in: ids } } });
@@ -70,6 +97,19 @@ export function createSecurityDatabase(options: { concurrency?: boolean } = {}) 
     aliceOtherSession,
     /** Bob-owned session for cross-account revocation checks. */
     bobSession,
+    /** Register only a test-created synthetic account UUID/email for this fixture's owned cleanup. */
+    ownCreatedUser(id: string, email: string): void {
+      if (!ready || !/^[0-9a-f-]{36}$/.test(id) || !/^[0-9a-f-]{36}@example\.test$/.test(email)) {
+        throw new Error("Synthetic fixture ownership registration refused.");
+      }
+      if (!ids.includes(id)) ids.push(id);
+      if (!emails.includes(email)) emails.push(email);
+    },
+    /** Register a generated request operation before creating/rotating a non-authorizing decoy. */
+    ownRegistrationOperation(id: string): void {
+      if (!ready || !/^[0-9a-f-]{36}$/.test(id)) throw new Error("Synthetic operation registration refused.");
+      if (!registrationOperations.includes(id)) registrationOperations.push(id);
+    },
     /** Validate explicit opt-in, local database identity, marker, privileges and migrations before writes. */
     async connect(): Promise<void> {
       if (process.env.NODE_ENV !== "test" || process.env.TEST_ALLOW_RESET !== "LOCAL_OAK_AUTH_TEST_ONLY") {
@@ -102,7 +142,31 @@ export function createSecurityDatabase(options: { concurrency?: boolean } = {}) 
         const migrations = await admin.$queryRaw<Array<{ migration_name: string }>>`
           SELECT migration_name FROM public._prisma_migrations
           WHERE finished_at IS NOT NULL AND rolled_back_at IS NULL`;
-        if (!migrations.some((row) => row.migration_name === "20261105090400_student_self_profile")) throw 0;
+        if (!["20261105090400_student_self_profile", "20261107090000_registration_foundation",
+          "20261107090100_registration_context", "20261107090200_registration_otp"].every((name) => migrations.some((row) => row.migration_name === name))) throw 0;
+        const registrationSecurity = await runtime.$queryRaw<Array<{ safe: boolean }>>`
+          SELECT NOT pg_has_role(current_user, 'oak_registration_owner', 'MEMBER')
+            AND NOT pg_has_role('oak_runtime', 'oak_registration_owner', 'MEMBER')
+            AND (SELECT count(*) = 8 AND bool_and(c.relrowsecurity
+              AND c.relowner <> 'oak_registration_owner'::regrole
+              AND NOT has_table_privilege(current_user,c.oid,'INSERT')
+              AND NOT has_table_privilege(current_user,c.oid,'UPDATE')
+              AND NOT has_table_privilege(current_user,c.oid,'DELETE')
+              AND NOT has_table_privilege(current_user,c.oid,'TRUNCATE'))
+              FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+              WHERE n.nspname='public' AND c.relname IN ('registration_applications',
+                'registration_capabilities','email_verification_challenges','student_profiles',
+                'consent_evidence','registration_documents','trial_assessments','email_deliveries'))
+            AND NOT has_table_privilege(current_user,'public.registration_capabilities','SELECT')
+            AND NOT has_table_privilege(current_user,'public.email_verification_challenges','SELECT') AS safe`;
+        if (registrationSecurity.length !== 1 || registrationSecurity[0]?.safe !== true) throw 0;
+        const decoySecurity = await runtime.$queryRaw<Array<{ safe: boolean }>>`
+          SELECT relrowsecurity AND NOT has_table_privilege(current_user,oid,'SELECT')
+            AND NOT has_table_privilege(current_user,oid,'INSERT')
+            AND NOT has_table_privilege(current_user,oid,'UPDATE')
+            AND NOT has_table_privilege(current_user,oid,'DELETE') AS safe
+          FROM pg_class WHERE oid='public.registration_decoy_flows'::regclass`;
+        if (decoySecurity[0]?.safe !== true) throw 0;
         await clean();
         digest = await hashPassword("synthetic-fixture-password-only");
         ready = true;

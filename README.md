@@ -1,7 +1,7 @@
 # Oak Sports Academy Training Registration and Management System
 
 Oak Sports Academy is a proposed web and Android application system for the
-Oak Sports Academy Taguig Branch. It will centralize the registration and
+Oak Sports Academy, McKinley Taguig. It will centralize the registration and
 training-management activities that are currently handled through Google Forms
 and manual staff processes.
 

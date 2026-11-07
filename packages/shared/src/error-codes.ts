@@ -1,4 +1,4 @@
-/** Reviewed authentication API codes; local network/storage errors are not server codes. */
+/** Reviewed authentication/registration API codes; local network/storage errors stay local. */
 export const ERROR_CODES = Object.freeze({
   VALIDATION_ERROR: "VALIDATION_ERROR",
   UNSUPPORTED_CLIENT: "UNSUPPORTED_CLIENT",
@@ -11,9 +11,16 @@ export const ERROR_CODES = Object.freeze({
   RATE_LIMITED: "RATE_LIMITED",
   UNAUTHENTICATED: "UNAUTHENTICATED",
   INTERNAL_ERROR: "INTERNAL_ERROR",
+  INVALID_VERIFICATION_CODE: "INVALID_VERIFICATION_CODE",
+  VERIFICATION_EXPIRED: "VERIFICATION_EXPIRED",
+  VERIFICATION_LIMITED: "VERIFICATION_LIMITED",
+  REGISTRATION_EXPIRED: "REGISTRATION_EXPIRED",
+  REGISTRATION_CONFLICT: "REGISTRATION_CONFLICT",
+  UPLOAD_INVALID: "UPLOAD_INVALID",
+  DELIVERY_UNAVAILABLE: "DELIVERY_UNAVAILABLE",
 } as const);
 
-/** Exact server error-code union from the reconciled authentication contract. */
+/** Exact server error-code union from the authentication and registration contracts. */
 export type ErrorCode = keyof typeof ERROR_CODES;
 
 /** Known login fields allowed in safe validation feedback. */

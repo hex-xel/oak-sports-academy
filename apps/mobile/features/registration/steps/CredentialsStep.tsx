@@ -11,6 +11,8 @@ import { RegistrationTextField } from "../components/RegistrationTextField";
 import { SectionCard } from "../components/SectionCard";
 import { PasswordChecklist } from "../components/PasswordChecklist";
 import type { StepProps } from "./step-props";
+import { InlineNotice } from "../components/InlineNotice";
+import { OutlineButton } from "../../../components/OutlineButton";
 
 /**
  * Email and password fields for a new account.
@@ -24,6 +26,9 @@ export const CredentialsStep: React.FC<StepProps> = ({
   update,
   clearError,
   showErrors,
+  busy = false,
+  credentialsAccepted = false,
+  onChangeAccount,
 }) => {
   return (
     <SectionCard>
@@ -41,10 +46,11 @@ export const CredentialsStep: React.FC<StepProps> = ({
         autoCapitalize="none"
         autoCorrect={false}
         textContentType="emailAddress"
+        disabled={busy || credentialsAccepted}
       />
       <RegistrationTextField
         label="Password"
-        placeholder="Create a password"
+        placeholder={credentialsAccepted ? "Password accepted" : "Create a password"}
         value={draft.password}
         onChangeText={(text) => {
           update((previous) => ({ ...previous, password: text }));
@@ -53,11 +59,12 @@ export const CredentialsStep: React.FC<StepProps> = ({
         error={errors.password ?? ""}
         isPassword
         textContentType="newPassword"
+        disabled={busy || credentialsAccepted}
       />
-      <PasswordChecklist password={draft.password} showUnmet={showErrors} />
+      {!credentialsAccepted ? <PasswordChecklist password={draft.password} showUnmet={showErrors} /> : null}
       <RegistrationTextField
         label="Confirm Password"
-        placeholder="Re-enter your password"
+        placeholder={credentialsAccepted ? "Confirmation cleared" : "Re-enter your password"}
         value={draft.confirmPassword}
         onChangeText={(text) => {
           update((previous) => ({ ...previous, confirmPassword: text }));
@@ -66,7 +73,16 @@ export const CredentialsStep: React.FC<StepProps> = ({
         error={errors.confirmPassword ?? ""}
         isPassword
         textContentType="newPassword"
+        disabled={busy || credentialsAccepted}
       />
+      <InlineNotice tone="info" message={credentialsAccepted
+        ? (draft.emailVerified ? "Email verified for registration. Your account still awaits assessment approval."
+          : "Credentials accepted. Check email if registration can continue; delivery is unconfirmed.")
+        : "This step creates account data. Your password is cleared here after acceptance; profile details and files stay local until final agreements. If resuming, enter the original password—an existing password will not change."} />
+      {credentialsAccepted && onChangeAccount ? <>
+        <InlineNotice tone="warning" message="Using another email clears your local registration entries. It does not delete the account already created." />
+        <OutlineButton label="Use another email" onPress={onChangeAccount} disabled={busy} />
+      </> : null}
     </SectionCard>
   );
 };

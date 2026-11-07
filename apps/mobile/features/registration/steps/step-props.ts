@@ -23,4 +23,10 @@ export interface StepProps {
   clearError: (field: RegistrationField) => void;
   /** True after a blocked Continue press; steps may reveal unmet-requirement styling. */
   showErrors: boolean;
+  /** Block credential edits while a bounded operation/storage recovery is pending. */
+  busy?: boolean;
+  /** Server accepted account data; password fields stay empty/locked until explicit reset. */
+  credentialsAccepted?: boolean;
+  /** Explicitly clear this registration's local context to use another email. */
+  onChangeAccount?: () => void;
 }

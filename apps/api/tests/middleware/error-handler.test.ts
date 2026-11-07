@@ -29,6 +29,9 @@ describe("safe API error responses", () => {
     ["EMAIL_NOT_VERIFIED", 403], ["ACCOUNT_SUSPENDED", 403], ["ACCOUNT_PENDING_APPROVAL", 403],
     ["FORBIDDEN", 403], ["PAYLOAD_TOO_LARGE", 413], ["RATE_LIMITED", 429],
     ["UNAUTHENTICATED", 401], ["INTERNAL_ERROR", 500],
+    ["INVALID_VERIFICATION_CODE", 400], ["VERIFICATION_EXPIRED", 400],
+    ["VERIFICATION_LIMITED", 429], ["REGISTRATION_EXPIRED", 401],
+    ["REGISTRATION_CONFLICT", 409], ["UPLOAD_INVALID", 400], ["DELIVERY_UNAVAILABLE", 503],
   ] as const)("maps %s to %i without stack/details", async (code, status) => {
     const response = await request(failingApp(new ApiError(code))).get("/failure");
     expect(response.status).toBe(status);

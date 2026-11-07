@@ -27,6 +27,8 @@ export interface OptionCardProps {
   selected: boolean;
   /** Invoked when the card is pressed. */
   onPress: () => void;
+  /** Locked during requests or after credentials are accepted. */
+  disabled?: boolean;
 }
 
 /**
@@ -41,14 +43,16 @@ export const OptionCard: React.FC<OptionCardProps> = ({
   icon,
   selected,
   onPress,
+  disabled = false,
 }) => {
   return (
     <TouchableOpacity
-      style={[styles.card, selected ? styles.cardSelected : styles.cardIdle]}
+      style={[styles.card, selected ? styles.cardSelected : styles.cardIdle, disabled && { opacity: 0.6 }]}
       onPress={onPress}
       activeOpacity={0.85}
+      disabled={disabled}
       accessibilityRole="radio"
-      accessibilityState={{ checked: selected }}
+      accessibilityState={{ checked: selected, disabled }}
       accessibilityLabel={`${title}. ${description}`}
     >
       <View style={styles.headerRow}>

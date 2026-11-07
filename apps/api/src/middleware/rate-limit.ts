@@ -14,6 +14,12 @@ function normalizedEmail(req: Request): string | undefined {
   return result.success ? result.data : undefined;
 }
 
+function proofKey(req: Request): string | undefined {
+  const proof = req.headers["x-registration-token"];
+  return typeof proof === "string" && /^[A-Za-z0-9_-]{43}$/.test(proof)
+    ? createHash("sha256").update(proof, "utf8").digest("hex") : undefined;
+}
+
 function checkProxyPolicy(req: Request): void {
   const trust: unknown = req.app.get("trust proxy");
   // T021 allows false or an explicit literal upstream-IP list, never true/hop counts.
@@ -30,6 +36,14 @@ export type RateLimiters = {
   loginIp: RateLimitRequestHandler;
   /** Sensitive login quota, 5 requests per 15 minutes per normalized email. */
   loginEmail: RateLimitRequestHandler;
+  /** Shared start/resend admission quota: 10 requests per 15 minutes per client IP. */
+  registrationIssueIp: RateLimitRequestHandler;
+  /** Start admission quota: 5 requests per 15 minutes per normalized email. */
+  registrationStartEmail: RateLimitRequestHandler;
+  /** Verification admission quota: 30 requests per 15 minutes per client IP. */
+  registrationVerifyIp: RateLimitRequestHandler;
+  /** Verification admission quota: 5 requests per 15 minutes per hashed proof. */
+  registrationVerifyProof: RateLimitRequestHandler;
   /** Release memory-store cleanup timers on application shutdown or test teardown. */
   shutdown: () => void;
 };
@@ -45,12 +59,15 @@ export type RateLimiters = {
  * Blocks return reviewed JSON/429 and Retry-After in seconds. No credentials or keys
  * are logged. MemoryStore expires inactive keys within two 15-minute rotation windows;
  * quotas reset on restart and are not shared across instances. Call shutdown at teardown.
+ * Registration uses independent shared start/resend IP, normalized-start-email and
+ * verify IP/hash-proof stores. Durable per-account issue/attempt limits remain SQL-owned;
+ * do not treat these process-local HTTP counters as a distributed authorization check.
  */
 export function createRateLimiters(): RateLimiters {
   const stores: MemoryStore[] = [];
   const error = new ApiError("RATE_LIMITED");
 
-  function create(limit: number, property: string, byEmail = false): RateLimitRequestHandler {
+  function create(limit: number, property: string, key: "ip" | "email" | "proof" = "ip"): RateLimitRequestHandler {
     const store = new MemoryStore();
     stores.push(store);
     return rateLimit({
@@ -67,23 +84,28 @@ export function createRateLimiters(): RateLimiters {
       skipFailedRequests: false,
       skip: (req) => {
         checkProxyPolicy(req);
-        return byEmail && normalizedEmail(req) === undefined;
+        return (key === "email" && normalizedEmail(req) === undefined) || (key === "proof" && proofKey(req) === undefined);
       },
       // Ignore untrusted forwarded headers instead of warning about their mere presence.
       // Other v7 validation checks (including permissive trust proxy) remain enabled.
       // Source: installed express-rate-limit 7.5.1 default keyGenerator validations.
       validate: { xForwardedForHeader: false },
-      ...(byEmail ? {
+      ...(key === "email" ? {
         keyGenerator: (req: Request) => createHash("sha256")
           .update(normalizedEmail(req) ?? "invalid", "utf8").digest("hex"),
       } : {}),
+      ...(key === "proof" ? { keyGenerator: (req: Request) => proofKey(req) ?? "invalid" } : {}),
     });
   }
 
   return {
     globalIp: create(100, "globalRateLimit"),
     loginIp: create(10, "loginIpRateLimit"),
-    loginEmail: create(5, "loginEmailRateLimit", true),
+    loginEmail: create(5, "loginEmailRateLimit", "email"),
+    registrationIssueIp: create(10, "registrationIssueIpRateLimit"),
+    registrationStartEmail: create(5, "registrationStartEmailRateLimit", "email"),
+    registrationVerifyIp: create(30, "registrationVerifyIpRateLimit"),
+    registrationVerifyProof: create(5, "registrationVerifyProofRateLimit", "proof"),
     shutdown: () => { for (const store of stores) store.shutdown(); },
   };
 }

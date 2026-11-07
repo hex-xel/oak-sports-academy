@@ -22,6 +22,8 @@ export const StudentTypeStep: React.FC<StepProps> = ({
   errors,
   update,
   clearError,
+  busy = false,
+  credentialsAccepted = false,
 }) => {
   const choose = (studentType: StudentType) => {
     update((previous) => ({ ...previous, studentType }));
@@ -37,6 +39,7 @@ export const StudentTypeStep: React.FC<StepProps> = ({
           icon="person-outline"
           selected={draft.studentType === "newly-white-belt"}
           onPress={() => choose("newly-white-belt")}
+          disabled={busy || credentialsAccepted}
         />
         <OptionCard
           title="Experienced Student"
@@ -44,8 +47,10 @@ export const StudentTypeStep: React.FC<StepProps> = ({
           icon="ribbon-outline"
           selected={draft.studentType === "experienced"}
           onPress={() => choose("experienced")}
+          disabled={busy || credentialsAccepted}
         />
       </SectionCard>
+      {credentialsAccepted ? <InlineNotice tone="info" message="Account details are already accepted. To start another flow, use another email from Account Credentials." /> : null}
       {errors.studentType ? (
         <InlineNotice tone="error" message={errors.studentType} />
       ) : null}

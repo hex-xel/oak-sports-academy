@@ -2,9 +2,9 @@
  * @file apps/mobile/features/registration/types.ts
  * Data model and option lists for the six-step student registration wizard.
  *
- * The wizard is UI-only for now: every value here stays in component state and is never
- * sent anywhere. Field names deliberately mirror `specifications.md` §7.1 (FR R-01) so the
- * later API contract can map onto them without renaming.
+ * Credentials/verification now use the API; personal details and files remain local
+ * until the final agreements/upload integration. Recovery stores only separate proof/
+ * operation/email metadata, never this complete draft. Fields mirror master §7.1.
  */
 
 /** Student type selected on step 1; drives no behavior yet beyond the wizard copy. */
@@ -63,7 +63,7 @@ export interface RegistrationDraft {
   email: string;
   password: string;
   confirmPassword: string;
-  /** Set once the (currently mocked) verification sheet is confirmed. */
+  /** Mirrors server-backed registration state; never authorizes API access itself. */
   emailVerified: boolean;
   firstName: string;
   middleName: string;

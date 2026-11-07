@@ -47,6 +47,25 @@ site visitors.
 
 ## Current status
 
+[Registration data boundary](architecture/registration.md) records registration
+credentials/OTP through T012: owner checks and real phone verification passed, with
+development migrations applied. T013 image screening is written with validation
+pending; its [algorithm demo guide](milestone-1/algorithm-implementation-demo.md)
+provides the professor walkthrough and GitHub source links.
+
+[Registration Admin design proposal](design/web/high-fidelity/registration-admin-proposal.html)
+and [review notes](design/web/registration-admin-review.md) are ready for owner review
+(T002). This is a synthetic local preview, not an implemented Administrator app.
+
+**Current branch:** `feat/student-registration`. The new
+[registration and assessment plan](../specs/002-student-registration/plan.md) and
+[30-task implementation list](../specs/002-student-registration/tasks.md) are drafted.
+They reuse the native registration UI, include a thin Administrator demo path, and
+use focused risk-based checks plus one final regression/manual checkpoint. Whole-
+project freeze target is November 22, rehearsal November 23, submission November 24.
+Business/design gates remain explicit before affected implementation. Profile/upload
+submission and the production Administrator flow remain in development.
+
 As of 2026-11-06, native Student login, server-confirmed startup restoration, current-
 session logout and concurrent-401 recovery are implemented. The API enforces current
 eligibility, centralized permissions/ownership and transaction-local RLS; audit writes

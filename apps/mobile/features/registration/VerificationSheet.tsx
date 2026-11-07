@@ -6,7 +6,7 @@
  * a green Verify action and a gold-outline Cancel. The expired variant swaps the mark and
  * copy and disables Verify until a new code is requested.
  *
- * No email is sent and no code is checked yet; the input only drives the UI states.
+ * Server metadata drives separate expiry/cooldown; only server verification advances.
  */
 
 import React, { useEffect, useState } from "react";
@@ -18,6 +18,7 @@ import {
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import {
@@ -30,64 +31,77 @@ import {
 import { OtpInput } from "./components/OtpInput";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { OutlineButton } from "../../components/OutlineButton";
-
-/** Seconds a mock verification code stays valid before the expired state appears. */
-const RESEND_SECONDS = 60;
+import { InlineNotice } from "./components/InlineNotice";
+import type { RegistrationStartResponse } from "@oak/shared";
+import type { RegistrationState } from "./registration-state";
 
 export interface VerificationSheetProps {
-  /** Controls modal visibility; opening restarts the countdown and clears the code. */
+  /** Visibility never resets server expiry or resend timing. */
   visible: boolean;
   /** Address shown in the body copy. */
   email: string;
   /** Dismisses the sheet without verifying. */
   onCancel: () => void;
-  /** Accepts the entered code and advances the wizard. */
-  onVerified: () => void;
+  /** Current server-issued flow, excluding any ordinary login authority. */
+  flow: RegistrationStartResponse | null;
+  /** Bounded operation progress and safe feedback from the registration lifecycle. */
+  phase: RegistrationState["phase"];
+  error: string | null;
+  errorCode: string | null;
+  blockedUntil: number;
+  verificationLimited: boolean;
+  needsConfirmation: boolean;
+  storageError: boolean;
+  /** Explicit actions; code is transient and never accepted locally. */
+  onVerify: (code: string) => void;
+  onResend: () => void;
+  onRetry: () => void;
+  onCodeChange: () => void;
 }
 
 /**
  * Renders the email-verification modal and its countdown.
  *
- * @param props - Visibility, email, cancel and verified callbacks.
- * @returns Modal sheet with active and expired variants.
+ * @param props Server timings, safe lifecycle feedback and explicit verification/retry actions.
+ * @returns Scrollable modal with independent cooldown/expiry and keyboard-safe progress/errors.
  */
 export const VerificationSheet: React.FC<VerificationSheetProps> = ({
   visible,
   email,
   onCancel,
-  onVerified,
+  flow, phase, error, errorCode, blockedUntil, verificationLimited, needsConfirmation, storageError,
+  onVerify, onResend, onRetry, onCodeChange,
 }) => {
   const [code, setCode] = useState("");
-  const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
+  const [now, setNow] = useState(Date.now);
 
   useEffect(() => {
-    if (!visible) return;
     setCode("");
-    setSecondsLeft(RESEND_SECONDS);
-    const timer = setInterval(() => {
-      setSecondsLeft((previous) => (previous > 0 ? previous - 1 : 0));
-    }, 1000);
+    if (!visible) return;
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [visible]);
+  }, [visible, flow?.challengeId]);
 
-  const expired = secondsLeft === 0;
-  const canVerify = code.length === 6 && !expired;
+  const busy = phase !== "idle";
+  const expired = !flow || Date.parse(flow.codeExpiresAt) <= now || errorCode === "VERIFICATION_EXPIRED";
+  const flowExpired = !flow || Date.parse(flow.registrationExpiresAt) <= now;
+  const secondsLeft = Math.max(0, Math.ceil((Math.max(flow ? Date.parse(flow.resendAfter) : 0, blockedUntil) - now) / 1000));
+  const waiting = blockedUntil > now;
+  const canVerify = code.length === 6 && !expired && !flowExpired && !busy && !storageError && !needsConfirmation && !verificationLimited && !waiting;
+  const canResend = secondsLeft === 0 && !flowExpired && !busy && !storageError && !needsConfirmation;
   const countdown = `${String(Math.floor(secondsLeft / 60)).padStart(2, "0")}:${String(
     secondsLeft % 60,
   ).padStart(2, "0")}`;
-
-  const resend = () => {
-    setCode("");
-    setSecondsLeft(RESEND_SECONDS);
-  };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <KeyboardAvoidingView
         style={styles.scrim}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <View style={styles.card} accessibilityViewIsModal accessibilityLabel="Email verification">
+          <ScrollView style={{ flexGrow: 0 }} keyboardShouldPersistTaps="handled">
           <View style={[styles.mark, expired ? styles.markError : styles.markSuccess]}>
             <Ionicons
               name={expired ? "alert-circle-outline" : "shield-checkmark-outline"}
@@ -96,46 +110,53 @@ export const VerificationSheet: React.FC<VerificationSheetProps> = ({
             />
           </View>
 
-          <Text style={styles.title}>
+          <Text style={styles.title} accessibilityRole="header" accessibilityLiveRegion="polite">
             {expired ? "Verification code expired" : "Verify your email"}
           </Text>
           <Text style={styles.body}>
             {expired
-              ? `The 6-digit code sent to ${email} is no longer valid. Request a new code to continue.`
-              : `Enter the 6-digit code we sent to ${email}.`}
+              ? "This code is no longer valid. Request a new code to continue."
+              : `Enter the 6-digit code for ${email}. If registration can continue, check your inbox. Delivery is unconfirmed.`}
           </Text>
 
-          <OtpInput value={code} onChange={setCode} invalid={expired} disabled={expired} />
+          <OtpInput value={code} onChange={value => { setCode(value); onCodeChange(); }}
+            invalid={expired || errorCode === "INVALID_VERIFICATION_CODE" || verificationLimited}
+            disabled={expired || flowExpired || busy || storageError || needsConfirmation} />
+          {error ? <InlineNotice tone="error" message={error} /> : null}
+          {flowExpired ? <InlineNotice tone="warning" message="This registration flow has expired. Check registration to see recovery guidance." /> : null}
 
           <View style={styles.resendRow}>
             <Text style={styles.resendPrompt}>
               {expired ? "Code expired." : "Didn't get the code?"}
             </Text>
             <Pressable
-              onPress={resend}
-              disabled={!expired}
+              onPress={onResend}
+              disabled={!canResend}
+              style={styles.resendAction}
               accessibilityRole="button"
-              accessibilityLabel={expired ? "Resend code" : `Resend code in ${countdown}`}
-              accessibilityState={{ disabled: !expired }}
+              accessibilityLabel={secondsLeft === 0 ? "Resend code" : `Resend code in ${countdown}`}
+              accessibilityState={{ disabled: !canResend, busy: phase === "resending" }}
             >
-              <Text style={[styles.resendLink, !expired && styles.resendLinkMuted]}>
-                {expired ? "Resend code" : `Resend code (${countdown})`}
+              <Text style={[styles.resendLink, !canResend && styles.resendLinkMuted]}>
+                {phase === "resending" ? "Requesting…" : secondsLeft === 0 ? "Resend code" : `Resend code (${countdown})`}
               </Text>
             </Pressable>
           </View>
 
-          <Text style={styles.previewNote}>
-            Preview build: no email is sent and any 6 digits are accepted.
+          <Text style={styles.guidance}>
+            Code expiry and resend availability are separate. Only a server-verified code continues registration.
           </Text>
 
           <PrimaryButton
-            label="Verify"
-            onPress={onVerified}
+            label={phase === "verifying" ? "Verifying…" : storageError ? "Retry secure storage" : needsConfirmation || flowExpired ? "Check registration" : "Verify"}
+            onPress={storageError || needsConfirmation || flowExpired ? onRetry : () => onVerify(code)}
             variant="forest"
-            disabled={!canVerify}
+            disabled={busy || (!(storageError || needsConfirmation || flowExpired) && !canVerify)}
+            loading={busy}
             style={styles.verifyButton}
           />
-          <OutlineButton label="Cancel" onPress={onCancel} />
+          <OutlineButton label="Cancel" onPress={onCancel} disabled={busy} />
+          </ScrollView>
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -150,6 +171,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
   },
   card: {
+    maxHeight: "90%",
     backgroundColor: RegistrationColors.card,
     borderRadius: 24,
     paddingHorizontal: Spacing.lg,
@@ -204,7 +226,8 @@ const styles = StyleSheet.create({
   resendLinkMuted: {
     color: Colors.textMuted,
   },
-  previewNote: {
+  resendAction: { minHeight: 48, justifyContent: "center" },
+  guidance: {
     fontSize: Typography.fontSize.xs,
     color: Colors.textMuted,
     textAlign: "center",

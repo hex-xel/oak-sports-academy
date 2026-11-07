@@ -2,8 +2,8 @@
  * @file apps/mobile/features/registration/validation.ts
  * Pure client-side validation and formatting for the registration wizard.
  *
- * No I/O, logging or persistence: the same rules are re-checked by the API once the
- * registration endpoint exists, so nothing here is a security control.
+ * No I/O, logging or persistence: API routes independently validate their inputs.
+ * Personal/profile finalization remains a later integration; these checks grant no access.
  *
  * Copy rules used throughout: sentence case, action first ("Enter your email address"),
  * one consistent pattern per field family, no raw error codes and no blame.

@@ -38,6 +38,7 @@ model User {
   updatedAt       DateTime      @updatedAt
 
   sessions        Session[]
+  registration    RegistrationApplication?
 
   @@index([role])
   @@map("users")
@@ -91,4 +92,246 @@ model AuditLog {
 
   @@index([timestamp])
   @@map("audit_logs")
+}
+
+/// Internal completion stage; separate from assessment and account eligibility.
+enum RegistrationStage {
+  DRAFT
+  SUBMITTED
+}
+
+/// Enrolled is reserved for the later enrollment/payment workflow.
+enum RegistrationStatus {
+  NEW
+  FREE_TRIAL_SCHEDULED
+  APPROVED
+  REJECTED
+  ENROLLED
+}
+
+/// Server-mapped values from the existing student-type choices.
+enum RegistrationStudentType {
+  NEW_WHITE_BELT
+  EXPERIENCED
+}
+
+/// Private required file slots; original filenames are not object keys.
+enum RegistrationDocumentSlot {
+  PHOTO_2X2
+  VALID_ID
+}
+
+/// Pending uploads cannot be attached to a final registration.
+enum RegistrationDocumentState {
+  PENDING
+  READY
+  ATTACHED
+}
+
+/// Transactional message purpose, never an authority or business status.
+enum RegistrationEmailKind {
+  OTP
+  TRIAL
+  RESULT
+}
+
+/// Sent means provider acceptance, not confirmed inbox receipt.
+enum RegistrationEmailState {
+  PENDING
+  SENT
+  FAILED
+}
+
+/// One application per account; operation hashes support safe idempotent retries.
+model RegistrationApplication {
+  id                    String @id @default(uuid()) @db.Uuid
+  userId                String @unique @db.Uuid
+  studentType           RegistrationStudentType
+  stage                 RegistrationStage @default(DRAFT)
+  status                RegistrationStatus @default(NEW)
+  version               Int @default(1)
+  startOperationId      String @unique @db.Uuid
+  submitOperationId     String? @unique @db.Uuid
+  submissionHash        String? @db.Char(64)
+  submittedAt           DateTime? @db.Timestamptz(3)
+  approvedAt            DateTime? @db.Timestamptz(3)
+  rejectedAt            DateTime? @db.Timestamptz(3)
+  createdAt             DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @db.Timestamptz(3)
+  user                  User @relation(fields: [userId], references: [id], onDelete: Restrict)
+  capabilities          RegistrationCapability[]
+  challenge             EmailVerificationChallenge?
+  profile               StudentProfile?
+  consents              ConsentEvidence[]
+  documents             RegistrationDocument[]
+  trial                 TrialAssessment?
+  deliveries            EmailDelivery[]
+
+  @@index([stage, status, submittedAt, id])
+  @@map("registration_applications")
+}
+
+/// Registration-only hash proof. T005 verifies expiry/stage; never a login session.
+model RegistrationCapability {
+  id                    String @id @default(uuid()) @db.Uuid
+  applicationId         String @db.Uuid
+  tokenHash             String @unique @db.Char(64)
+  challengeVersion      Int
+  verifiedAt            DateTime? @db.Timestamptz(3)
+  expiresAt             DateTime @db.Timestamptz(3)
+  revokedAt             DateTime? @db.Timestamptz(3)
+  createdAt             DateTime @default(now()) @db.Timestamptz(3)
+  application           RegistrationApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+
+  @@index([applicationId])
+  @@index([expiresAt])
+  @@map("registration_capabilities")
+}
+
+/// One current challenge per application; resend rotates ID/digest/version atomically.
+model EmailVerificationChallenge {
+  id                    String @id @default(uuid()) @db.Uuid
+  applicationId         String @unique @db.Uuid
+  codeDigest            String @db.Char(64)
+  version               Int @default(1)
+  attempts              Int @default(0)
+  consumedAt            DateTime? @db.Timestamptz(3)
+  expiresAt             DateTime @db.Timestamptz(3)
+  resendAfter           DateTime @db.Timestamptz(3)
+  issueOperationId      String @unique @db.Uuid
+  issuedAt              DateTime @default(now()) @db.Timestamptz(3)
+  application           RegistrationApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+
+  @@map("email_verification_challenges")
+}
+
+/// Persisted only at final submission; DOB is a calendar date, not a UTC instant.
+model StudentProfile {
+  id                    String @id @default(uuid()) @db.Uuid
+  applicationId         String @unique @db.Uuid
+  firstName             String @db.VarChar(100)
+  middleName            String? @db.VarChar(100)
+  surname               String @db.VarChar(100)
+  gender                String @db.VarChar(10)
+  dateOfBirth           DateTime @db.Date
+  ageAtSubmission       Int
+  mobile                String @db.VarChar(10)
+  houseAndLot           String @db.VarChar(255)
+  barangay              String @db.VarChar(100)
+  municipality          String @db.VarChar(100)
+  province              String @db.VarChar(100)
+  guardianName          String? @db.VarChar(200)
+  guardianRelationship  String? @db.VarChar(20)
+  guardianOccupation    String? @db.VarChar(100)
+  guardianContact       String? @db.VarChar(10)
+  validIdType           String @db.VarChar(30)
+  createdAt             DateTime @default(now()) @db.Timestamptz(3)
+  application           RegistrationApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+
+  @@index([surname, firstName, applicationId])
+  @@map("student_profiles")
+}
+
+/// Immutable accepted version and three required agreements; precedes private uploads.
+model ConsentEvidence {
+  id                    String @id @default(uuid()) @db.Uuid
+  applicationId         String @db.Uuid
+  operationId           String @unique @db.Uuid
+  policyVersion         String @db.VarChar(80)
+  waiver                Boolean
+  fitness               Boolean
+  terms                 Boolean
+  acceptedAt            DateTime @default(now()) @db.Timestamptz(3)
+  application           RegistrationApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  documents             RegistrationDocument[]
+
+  @@unique([applicationId, id])
+  @@index([applicationId, acceptedAt])
+  @@map("consent_evidence")
+}
+
+/// Upload attempts retain metadata only; SQL uniquely limits attached current slots.
+model RegistrationDocument {
+  id                    String @id @default(uuid()) @db.Uuid
+  applicationId         String @db.Uuid
+  consentId             String @db.Uuid
+  operationId           String @unique @db.Uuid
+  slot                  RegistrationDocumentSlot
+  state                 RegistrationDocumentState @default(PENDING)
+  objectKey             String @unique @db.VarChar(255)
+  mimeType              String @db.VarChar(20)
+  byteSize              Int
+  width                 Int
+  height                Int
+  checksum              String @db.Char(64)
+  createdAt             DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @db.Timestamptz(3)
+  application           RegistrationApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  consent               ConsentEvidence @relation(fields: [applicationId, consentId], references: [applicationId, id], onDelete: Restrict)
+
+  @@index([applicationId, slot, state])
+  @@map("registration_documents")
+}
+
+/// One current assessment per application; UTC instants displayed in Asia/Manila.
+model TrialAssessment {
+  id                    String @id @default(uuid()) @db.Uuid
+  applicationId         String @unique @db.Uuid
+  operationId           String @unique @db.Uuid
+  decisionOperationId   String? @unique @db.Uuid
+  version               Int @default(1)
+  startsAt              DateTime @db.Timestamptz(3)
+  endsAt                DateTime @db.Timestamptz(3)
+  timezone              String @default("Asia/Manila") @db.VarChar(40)
+  capacity              Int
+  scheduledBy           String @db.Uuid
+  decidedBy             String? @db.Uuid
+  completedAt           DateTime? @db.Timestamptz(3)
+  createdAt             DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @db.Timestamptz(3)
+  application           RegistrationApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+
+  @@index([startsAt, id])
+  @@index([completedAt, startsAt])
+  @@map("trial_assessments")
+}
+
+/// Delivery metadata only: no plaintext OTP, token, email body or credential payload.
+model EmailDelivery {
+  id                    String @id @default(uuid()) @db.Uuid
+  applicationId         String @db.Uuid
+  operationId           String @unique @db.Uuid
+  kind                  RegistrationEmailKind
+  eventVersion          Int
+  state                 RegistrationEmailState @default(PENDING)
+  idempotencyKey        String @unique @db.VarChar(256)
+  providerId            String? @db.VarChar(255)
+  reasonCode            String? @db.VarChar(60)
+  attemptCount          Int @default(0)
+  acceptedAt            DateTime? @db.Timestamptz(3)
+  createdAt             DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @db.Timestamptz(3)
+  application           RegistrationApplication @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+
+  @@unique([applicationId, kind, eventVersion])
+  @@index([state, createdAt])
+  @@map("email_deliveries")
+}
+
+/// Durable non-authorizing flow: duplicates must not reveal account existence via retry behavior.
+model RegistrationDecoyFlow {
+  id               String @id @default(uuid()) @db.Uuid
+  startOperationId String @unique @db.Uuid
+  operationId      String @unique @db.Uuid
+  tokenHash        String @unique @db.Char(64)
+  challengeId      String @db.Uuid
+  attempts         Int @default(0)
+  issueTimes       DateTime[] @db.Timestamptz(3)
+  codeExpiresAt    DateTime @db.Timestamptz(3)
+  resendAfter      DateTime @db.Timestamptz(3)
+  expiresAt        DateTime @db.Timestamptz(3)
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([expiresAt])
+  @@map("registration_decoy_flows")
 }

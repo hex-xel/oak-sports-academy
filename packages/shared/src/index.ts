@@ -17,3 +17,9 @@ export type { AcademyRole } from "./permissions.js";
 export { ERROR_CODES, VALIDATION_FIELDS, isErrorCode } from "./error-codes.js";
 export type { ErrorCode, ValidationField, ApiErrorResponse } from "./error-codes.js";
 export type { AuthAccountStatus, UserSummary, LoginRequest, LoginResponse, SessionResponse, LogoutResponse } from "./auth-types.js";
+export type { RegistrationStudentType, RegistrationStatus, RegistrationStartRequest,
+  RegistrationStartResponse, RegistrationVerifyRequest, RegistrationVerifyResponse,
+  RegistrationResendRequest, RegistrationResendResponse, RegistrationAgreementsRequest,
+  RegistrationAgreementsResponse, RegistrationGuardian, RegistrationProfile,
+  RegistrationSubmitRequest, RegistrationReceipt, RegistrationProgressResponse,
+  RegistrationDocumentSlot, RegistrationDocumentResponse } from "./registration.js";

@@ -17,6 +17,13 @@ const catalog = {
   RATE_LIMITED: { status: 429, message: "Too many attempts. Try again later." },
   UNAUTHENTICATED: { status: 401, message: "Unauthenticated" },
   INTERNAL_ERROR: { status: 500, message: "Something went wrong. Please try again." },
+  INVALID_VERIFICATION_CODE: { status: 400, message: "Check the verification code and try again." },
+  VERIFICATION_EXPIRED: { status: 400, message: "This verification code has expired. Request a new code." },
+  VERIFICATION_LIMITED: { status: 429, message: "Too many verification attempts. Try again later." },
+  REGISTRATION_EXPIRED: { status: 401, message: "Registration verification is required to continue." },
+  REGISTRATION_CONFLICT: { status: 409, message: "Registration has changed. Check its progress before trying again." },
+  UPLOAD_INVALID: { status: 400, message: "Choose a valid JPEG or PNG image that meets the upload requirements." },
+  DELIVERY_UNAVAILABLE: { status: 503, message: "We could not confirm email delivery. Try again when available." },
 } as const satisfies Record<ErrorCode, { status: number; message: string }>;
 
 /** Backward-compatible API alias for the shared contract's reviewed codes. */

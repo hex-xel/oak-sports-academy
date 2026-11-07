@@ -257,6 +257,14 @@ For email verification:
 - Invalidate it after successful verification.
 - Never log the OTP.
 
+Registration defaults approved by owner 2026-11-06: OTP expires after 10 minutes,
+at most five failed attempts per challenge, separate 60-second resend cooldown,
+old challenge invalidated on resend. Limit issues/resends to five per normalized
+email and ten per IP per 15 minutes, with a separate per-capability verify quota.
+Use a keyed digest bound to account/challenge; never store plaintext or an unkeyed
+six-digit hash. Pending applicants use a distinct random registration-only capability,
+hash-protected at rest with one-hour absolute expiry; never ordinary login authority.
+
 For password recovery:
 - Generate a high-entropy, cryptographically random reset token.
 - Store only a hash of the reset token.
@@ -403,6 +411,25 @@ Provide a six-step form with a visible progress indicator:
 4. Contact details: mobile number; address comprising house and lot, barangay, municipality, province. For minors, require guardian name, relationship (Parent, Aunt/Uncle, Sibling, Other), occupation, and contact number; prevent submission if missing.
 5. Requirements: 2x2 photo and valid ID.
 6. Terms and agreement: readable waiver and acceptance checkboxes; prevent registration submission until all are accepted.
+
+Owner-approved rules (2026-11-06): minor means under 18 on final submission date in
+Asia/Manila, computed server-side from birth date; exactly 18 is adult. Require all
+conditional guardian fields including occupation, with no separate guardian login or
+additional authority verification. Preserve final waiver/fitness/terms checkboxes;
+guardian details alone are not waiver acceptance. Existing TermsStep text/checklist
+is demonstration version `registration-2026-11-06`, subject to academy content review.
+
+Keep personal/contact/guardian details and selected files on-device until final
+agreements; record agreement/version before server uploads, then finalize. No early
+consent screen. Credentials/email already create account data at step 2; disclose this
+accurately. Accepted IDs: PhilID/ePhilID, passport, driver's license, school ID and
+other government ID. Images: JPEG/PNG, actual bytes 5 KiB–5 MiB, minimum 400×400 pixels,
+complete bounded decoding, private storage and generated object names.
+
+For registration free trials, Admin supplies date/time and positive duration/capacity
+per trial in Asia/Manila; no fixed defaults, automatic age bands or no-show policy.
+Approval records approvedAt and activates only a verified account, not enrollment,
+payments or packages. Exact enrollment countdown/deletion remains gated by section 16.
 
 After submission, show confirmation instructing the student to check email for the free-trial schedule. The Administrator assigns and emails the date/time. The student attends for assessment. The Administrator approves or rejects based on results. Approved students must enroll and pay within one week; accounts not enrolled by the deadline are automatically deleted. The deletion and pending-payment safeguards require confirmation in section 16 before enabling destructive automation.
 
@@ -762,7 +789,7 @@ Trial attendance and “Waiting for result” may be tracked separately without 
 - **Paradigm**: Stream-based Header Inspection & Structural Binary Validation (Fixed-Offset Byte Verification)
 - **Status**: Retained technical screening design; revised source requires private 2x2 photo and valid ID uploads.
 - **Time Complexity**: Signature matching uses a bounded header. JPEG dimension parsing scans marker segments; full-file checksumming is O(file size). Do not claim the entire upload pipeline is O(1).
-- **Space Complexity**: $O(1)$ buffer space (inspects initial binary chunk without buffering full multi-megabyte payloads in memory).
+- **Space Complexity**: Signature comparison uses $O(1)$ additional space. The complete server validator uses $O(n + p)$ bounded working memory for the input snapshot and decoded pixels, where $n$ is file byte size and $p$ is decoded pixel count. Full decoding/checksumming are not an $O(1)$ pipeline. Input-size, pixel and decoder-work limits prevent unbounded allocations.
 
 #### Purpose
 Secure the required valid-ID and 2x2-photo collection workflow against malicious file uploads (e.g. executable scripts, PHP/JS shells disguised with image extensions), confirm authentic MIME types via magic numbers, and reject unreadable or inadequate uploads before storage in private Supabase buckets.
@@ -776,16 +803,16 @@ Secure the required valid-ID and 2x2-photo collection workflow against malicious
 #### Algorithm Process
 1. **Magic Byte Inspection**:
    Inspect the initial bytes (magic numbers) of the incoming file buffer to determine actual binary format:
-   - **JPEG / JPG**: Must begin with `FF D8 FF` (specifically `FF D8 FF E0`, `FF D8 FF E1`, or `FF D8 FF EE`).
+   - **JPEG / JPG**: Must begin with `FF D8 FF`; APP0/APP1/APP14 prefixes such as `FF D8 FF E0`, `FF D8 FF E1`, or `FF D8 FF EE` are examples, not an exhaustive list of valid JPEG marker sequences. Complete JPEG decoding is still required.
    - **PNG**: Must match the 8-byte signature: `89 50 4E 47 0D 0A 1A 0A` (`\x89PNG\r\n\x1a\n`).
 2. **MIME Cross-Verification**:
    Compare the true binary signature against the client-declared `Content-Type` and file extension. If the client claims `image/png` but magic bytes indicate `text/plain`, `application/x-executable`, or JPEG, immediately terminate the upload with `MIME_SIGNATURE_MISMATCH`.
 3. **Payload Boundary Enforcement**:
-   - Minimum file size check: $\text{size} \ge 5\text{ KB}$ (rejects empty or corrupt stubs).
-   - Maximum file size check: $\text{size} \le 5\text{ MB}$ (prevents memory and storage exhaustion).
+   - Minimum file size check: $\text{size} \ge 5\text{ KiB}$ (5,120 actual bytes; owner-approved 2026-11-06).
+   - Maximum file size check: $\text{size} \le 5\text{ MiB}$ (5,242,880 actual bytes; owner-approved 2026-11-06).
 4. **Header Dimension & Geometry Pre-Screening**:
    Parse image structure (JPEG SOF markers or PNG IHDR) to extract dimensions; JPEG dimensions need not be within the first 32 bytes. Bound parser work, reject malformed files and separately validate complete decoding; a valid signature alone does not establish image safety or readability:
-   - Enforce minimum resolution (e.g., $400 \times 400$ px for ID/waiver legibility).
+   - Enforce minimum resolution $400 \times 400$ px for both images (owner-approved 2026-11-06).
    - Reject malformed or truncated image headers with `CORRUPTED_IMAGE_HEADER`.
 5. **Path & Filename Sanitization**:
    Discard the client-provided filename. Generate a cryptographically random UUIDv4 filename (e.g., `doc_9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d.png`) to eliminate directory traversal (`../`) and remote code execution vulnerabilities.
@@ -809,10 +836,10 @@ The revised document is authoritative for the changed business requirements, but
 
 1. **First login and enrollment access — resolved 2026-11-05:** Verified assessment-approved Students have the same Student screens and navigation before and after enrollment. Account approval is separate from registration, payment and package status. Unapproved accounts cannot log in; equal navigation does not activate unpaid training entitlements.
 2. **One-week deletion:** Confirm exact deadline start/boundary, timezone, whether enrollment requires confirmed payment before expiry, and treatment of an on-time Pending payment awaiting Administrator action. Define deletion scope (account, profile, documents and pending records), retention/anonymization and audit preservation, failure recovery and notice. FR AF-01 automatic deletion must be reconciled with NFR 3 confirmation before deletion. Do not substitute deactivation or enable destructive deletion without these decisions.
-3. **Minor/guardian rules:** Confirm minor-age threshold and age calculation date, authorized consent provider, and how guardian consent is collected before storing minor data when the source places waiver acceptance last. Guardian relationship choices alone do not establish legal consent authority. Confirm whether separate guardian logins from the old baseline remain desired.
+3. **Minor/guardian rules — resolved by owner 2026-11-06:** Under 18 on Manila final-submission date. Require conditional guardian name, relationship, occupation/contact; no separate guardian login or additional authority verification. Preserve final waiver/fitness/terms, with demo version registration-2026-11-06 subject to academy content review. Keep profile/files local until final agreements, record acceptance before uploads; disclose earlier step-2 credentials/email storage. No early consent screen or claim that guardian details alone establish waiver acceptance.
 4. **Modules and eligibility:** Confirm Module 3 fee, duration/session entitlement and evaluation ordering; white-belt completion criteria; transition into Experienced Student classification; Elite eligibility. Clarify the experienced Group fee wording “regular price PHP 6,000, 1st Module”. Do not apply white-belt module locks to Experienced Students without approval.
 5. **Renewal and balances:** Confirm calendar month versus fixed days, expiry time, treatment of unused bonus sessions, medical evidence/approval timing, deduction/reversal rules, and whether Renew waits for confirmed payment. Medical carry-over has no count limit; unexcused absences forfeit sessions. Define how configured counts/periods affect existing paid packages.
-6. **Scheduling/capacity:** Confirm age-group bands, minimum-group-size behavior, free-trial capacity/duration and rescheduling/no-show rules. The old two-trial-day allowance is superseded; no new numeric trial entitlement is specified. Confirm coach credentials and delegated permissions.
+6. **Scheduling/capacity:** Confirm age-group bands, minimum-group-size behavior and rescheduling/no-show rules. Registration free-trial duration/capacity are positive values entered by Admin with date/time in Asia/Manila (owner-approved 2026-11-06); no fixed default or automatic age-band assignment. The old two-trial-day allowance is superseded; no new numeric trial entitlement is specified. Confirm coach credentials and delegated permissions.
 7. **Settings and notifications:** Confirm settings location without changing the mandated menu order, permitted setting ranges, fee-change effective dates, payment reference uniqueness/normalization across methods, reminder cadence, retry limits and resend behavior. Idle-session policy was resolved on 2026-11-05 as specified in section 4. All other settings/notification questions remain open.
 8. **Delivery/platform feasibility:** Confirm responsive student web access needed for Android/iOS browser compatibility alongside the retained native Android app; no native iOS app is specified. Agree measurement conditions and hosting/backup arrangements for 99% availability, response/delivery targets, daily backups and 24-hour recovery. No plan upgrade or architecture replacement is authorized by this document revision.
 9. **Downstream review:** Existing `specs/001-user-login/` artifacts, role/guardian architecture, audit documentation, README, design mockups and academic algorithm notes must be reviewed against this baseline before their affected behavior is implemented. This revision does not update those artifacts or certify existing code as compliant. Public content/merchandise and churn analytics from the older baseline are not required by the revised source; confirm any retained scope separately.

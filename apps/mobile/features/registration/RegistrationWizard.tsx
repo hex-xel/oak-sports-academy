@@ -7,11 +7,12 @@
  * dropzones, OTP boxes) taken from
  * `docs/design/mobile/sticker-sheet/sticker-sheet.png`.
  *
- * Scope note: this is UI only. Nothing is submitted, uploaded or verified. The wizard
- * keeps every answer in local state so Back/Continue never loses input.
+ * Credentials/OTP use the registration API. Profile/files remain local until the
+ * later agreements/upload/finalize integration; no preview submission is reported.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import * as Crypto from "expo-crypto";
 import {
   View,
   Text,
@@ -40,7 +41,10 @@ import { ContactStep } from "./steps/ContactStep";
 import { RequirementsStep } from "./steps/RequirementsStep";
 import { TermsStep } from "./steps/TermsStep";
 import { VerificationSheet } from "./VerificationSheet";
-import { RegistrationSuccess } from "./RegistrationSuccess";
+import { InlineNotice } from "./components/InlineNotice";
+import { registrationApi } from "../../lib/registration-api";
+import { readRegistration, writeRegistration, removeRegistration } from "../../lib/registration-store";
+import { createRegistrationState } from "./registration-state";
 import { createEmptyDraft } from "./types";
 import type { RegistrationDraft, RegistrationErrors, RegistrationField } from "./types";
 import {
@@ -62,7 +66,7 @@ const STEP_TITLES = [
 ] as const;
 
 export interface RegistrationWizardProps {
-  /** Leaves the wizard for the login screen (step 1 "Back to Login" and success CTA). */
+  /** Leaves the wizard for the login screen from the initial Back action. */
   onExitToLogin: () => void;
   /**
    * Whether missing documents block step 5. Off while the device picker is not wired so
@@ -72,10 +76,10 @@ export interface RegistrationWizardProps {
 }
 
 /**
- * Renders the registration wizard and its confirmation screen.
+ * Renders registration with server-backed verification and local profile steps.
  *
  * @param props - Exit callback and the uploads gate.
- * @returns Wizard chrome (title, progress, step body, footer) or the success screen.
+ * @returns Wizard chrome and OTP modal; real submission remains the later integration.
  */
 export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
   onExitToLogin,
@@ -86,7 +90,11 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
   const [errors, setErrors] = useState<RegistrationErrors>({});
   const [showErrors, setShowErrors] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const [registration] = useState(() => createRegistrationState({ api: registrationApi,
+    storage: { read: readRegistration, write: writeRegistration, remove: removeRegistration }, newId: () => Crypto.randomUUID() }));
+  const registrationState = useSyncExternalStore(registration.subscribe, registration.getSnapshot, registration.getSnapshot);
+  const busy = registrationState.phase !== "idle";
+  const [now, setNow] = useState(Date.now);
   // Each step renders a different height, so the previous scroll offset would otherwise
   // leave the user halfway down the next step.
   const scrollRef = useRef<ScrollViewInstance>(null);
@@ -94,11 +102,42 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
   // be applied by hand; react-native's SafeAreaView is iOS-only.
   const insets = useSafeAreaInsets();
 
+  useEffect(() => { void registration.restore(); return () => registration.cancel(); }, [registration]);
+  useEffect(() => {
+    setNow(Date.now());
+    if (registrationState.blockedUntil <= Date.now()) return;
+    const timer = setInterval(() => {
+      setNow(Date.now());
+      if (Date.now() >= registrationState.blockedUntil) clearInterval(timer);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [registrationState.blockedUntil]);
+
   const goToStep = useCallback((index: number) => {
     setStepIndex(index);
     setErrors({});
     setShowErrors(false);
   }, []);
+
+  useEffect(() => {
+    if (registration.getSnapshot().saved !== registrationState.saved) return;
+    const saved = registrationState.saved;
+    if (!saved?.flow) setVerifying(false);
+    if (saved) setDraft(previous => ({ ...previous, email: saved.email, studentType: saved.studentType,
+      emailVerified: registrationState.verified,
+      ...(saved.flow ? { password: "", confirmPassword: "" } : {}) }));
+    else setDraft(previous => ({ ...previous, emailVerified: false }));
+    if (registrationState.verified) {
+      setVerifying(false);
+      setStepIndex(previous => previous <= 1 ? 2 : previous);
+      setErrors({}); setShowErrors(false);
+    }
+  }, [registration, registrationState.saved, registrationState.verified]);
+
+  const changeAccount = () => {
+    setDraft(createEmptyDraft()); setVerifying(false); goToStep(0);
+    void registration.reset();
+  };
 
   const clearError = useCallback((field: RegistrationField) => {
     setErrors((previous) => {
@@ -138,25 +177,36 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
     }
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
+    if (busy || registrationState.storageError || registrationState.blockedUntil > Date.now()) return;
+    if (stepIndex === 1 && registrationState.needsConfirmation) {
+      if (await registration.restore() && registration.getSnapshot().saved?.flow && !registration.getSnapshot().verified) setVerifying(true);
+      return;
+    }
+    if (stepIndex === 1 && registrationState.saved?.flow) {
+      if (registrationState.verified) goToStep(2); else setVerifying(true);
+      return;
+    }
+    if (stepIndex > 1 && !registrationState.verified) { goToStep(1); return; }
     const stepErrors = validateStep(stepIndex);
     setErrors(stepErrors);
     if (Object.keys(stepErrors).length > 0) {
       setShowErrors(true);
       return;
     }
-    if (stepIndex === 1 && !draft.emailVerified) {
-      setVerifying(true);
+    if (stepIndex === 1 && draft.studentType) {
+      if (await registration.start(draft.email, draft.studentType, draft.password)) setVerifying(true);
       return;
     }
     if (stepIndex === STEP_TITLES.length - 1) {
-      setSuccess(true);
+      // No preview success: final agreements/uploads/submission are wired in T017.
       return;
     }
     goToStep(stepIndex + 1);
   };
 
   const handleBack = () => {
+    if (registration.getSnapshot().phase !== "idle") return;
     if (stepIndex === 0) {
       onExitToLogin();
       return;
@@ -164,16 +214,10 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
     goToStep(stepIndex - 1);
   };
 
-  const handleVerified = () => {
-    setDraft((previous) => ({ ...previous, emailVerified: true }));
-    setVerifying(false);
-    goToStep(2);
-  };
-
   // Android back should walk the wizard backwards before leaving the route.
   useEffect(() => {
-    if (success) return;
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (registration.getSnapshot().phase !== "idle") return true;
       if (verifying) {
         setVerifying(false);
         return true;
@@ -183,23 +227,27 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
       return true;
     });
     return () => subscription.remove();
-  }, [goToStep, stepIndex, success, verifying]);
-
-  if (success) {
-    return (
-      <View style={[styles.safeArea, { paddingTop: insets.top }]}>
-        <StatusBar style="dark" />
-        <RegistrationSuccess email={draft.email.trim()} onContinueToLogin={onExitToLogin} />
-      </View>
-    );
-  }
+  }, [busy, goToStep, stepIndex, verifying]);
 
   const stepProps = {
     draft,
     errors,
-    update: setDraft,
+    update: (updater: (previous: RegistrationDraft) => RegistrationDraft) => {
+      setDraft(previous => {
+        const current = registration.getSnapshot();
+        if (current.phase !== "idle" || current.storageError) return previous;
+        const next = updater(previous);
+        // Accepted identity is locked by its controls until explicit account reset.
+        if (current.saved?.flow) return { ...next, studentType: previous.studentType, email: previous.email,
+          emailVerified: current.verified, password: "", confirmPassword: "" };
+        return next;
+      });
+    },
     clearError,
     showErrors,
+    busy: busy || registrationState.storageError,
+    credentialsAccepted: Boolean(registrationState.saved?.flow),
+    onChangeAccount: changeAccount,
   };
 
   const isLastStep = stepIndex === STEP_TITLES.length - 1;
@@ -226,6 +274,13 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
             title={STEP_TITLES[stepIndex] ?? ""}
           />
 
+          {registrationState.error && !verifying ? <InlineNotice tone="error" message={registrationState.error} /> : null}
+          {registrationState.storageError ? <>
+            <OutlineButton label="Retry registration storage" onPress={() => { void registration.retryStorage(); }} disabled={busy} />
+            <OutlineButton label="Clear this registration" onPress={changeAccount} disabled={busy} />
+          </> : null}
+          {stepIndex === 5 ? <InlineNotice tone="warning" message="Profile and file submission is not connected yet. This registration has not been submitted." /> : null}
+
           {stepIndex === 0 ? <StudentTypeStep {...stepProps} /> : null}
           {stepIndex === 1 ? <CredentialsStep {...stepProps} /> : null}
           {stepIndex === 2 ? <PersonalStep {...stepProps} /> : null}
@@ -239,20 +294,36 @@ export const RegistrationWizard: React.FC<RegistrationWizardProps> = ({
             label={stepIndex === 0 ? "Back to Login" : "Back"}
             onPress={handleBack}
             style={styles.footerSecondary}
+            disabled={busy}
           />
           <PrimaryButton
-            label={isLastStep ? "Submit Registration" : "Continue"}
-            onPress={handleContinue}
+            label={busy ? (registrationState.phase === "starting" ? "Starting registration…" : "Checking registration…")
+              : registrationState.blockedUntil > now ? `Try again in ${Math.ceil((registrationState.blockedUntil - now) / 1000)}s`
+                : registrationState.needsConfirmation ? "Try again" : isLastStep ? "Submit Registration" : "Continue"}
+            onPress={() => { void handleContinue(); }}
             variant={isLastStep ? "gold" : "forest"}
+            loading={busy}
+            disabled={isLastStep || registrationState.storageError || registrationState.blockedUntil > now}
           />
         </View>
       </KeyboardAvoidingView>
 
       <VerificationSheet
-        visible={verifying}
+        visible={verifying && Boolean(registrationState.saved?.flow)}
         email={draft.email.trim()}
-        onCancel={() => setVerifying(false)}
-        onVerified={handleVerified}
+        flow={registrationState.saved?.flow ?? null}
+        phase={registrationState.phase}
+        error={registrationState.error}
+        errorCode={registrationState.errorCode}
+        blockedUntil={registrationState.blockedUntil}
+        verificationLimited={registrationState.verificationLimited}
+        needsConfirmation={registrationState.needsConfirmation}
+        storageError={registrationState.storageError}
+        onCancel={() => { if (registration.getSnapshot().phase === "idle") setVerifying(false); }}
+        onVerify={code => { void registration.verify(code); }}
+        onResend={() => { void registration.resend(); }}
+        onRetry={() => { void (registrationState.storageError ? registration.retryStorage() : registration.restore()); }}
+        onCodeChange={() => registration.clearCodeError()}
       />
     </View>
   );

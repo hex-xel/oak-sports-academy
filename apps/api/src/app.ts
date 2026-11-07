@@ -4,9 +4,12 @@ import { z } from "zod";
 import { createRateLimiters, type RateLimiters } from "./middleware/rate-limit.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { registerAuthRoutes } from "./modules/auth/auth.routes.js";
+import { registerRegistrationRoutes } from "./modules/registration/registration.routes.js";
+import type { RegistrationOperations } from "./modules/registration/registration.controller.js";
 
 /** Server-owned configuration; no runtime environment/database access on import. */
-export type AppOptions = Readonly<{ trustProxy?: false | string[]; production?: boolean }>;
+export type AppOptions = Readonly<{ trustProxy?: false | string[]; production?: boolean;
+  registration?: RegistrationOperations }>;
 
 /** Application plus versioned router and stores for later auth registration and shutdown. */
 export type AppRuntime = Readonly<{
@@ -18,12 +21,14 @@ export type AppRuntime = Readonly<{
 
 /**
  * Construct the API security boundary without listening or connecting to a database.
- * @param options Trusted proxy allowlist and production header mode, fixed by the server.
+ * @param options Trusted proxy/header configuration and optional server-owned registration
+ * backend injection; never derive options from request data.
  * @returns App, /api/v1 router and limiter cleanup; call close at teardown.
  * @throws Framework/configuration errors; never pass client-controlled options.
  * @remarks Global quota precedes bounded JSON parsing; Helmet covers parser/404 errors.
  * Auth routes use the application's sensitive limiters and load their dependencies on request. Protected
  * work must use requireAuth's server-selected activity mode; no heartbeat is mounted.
+ * Registration loads its independent configured capability service on valid requests only.
  */
 export function createApp(options: AppOptions = {}): AppRuntime {
   const app = express();
@@ -54,6 +59,7 @@ export function createApp(options: AppOptions = {}): AppRuntime {
     } catch (error) { next(error); }
   });
   registerAuthRoutes(router, rateLimiters);
+  registerRegistrationRoutes(router, rateLimiters, options.registration);
   app.use("/api/v1", router);
   app.use((_req, res) => { res.status(404).json({ message: "Resource not found." }); });
   app.use(errorHandler);
